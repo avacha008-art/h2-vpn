@@ -5,6 +5,8 @@ import android.content.res.ColorStateList
 import android.net.Uri
 import android.net.VpnService
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.KeyEvent
 import android.view.Menu
 import android.view.MenuItem
@@ -48,6 +50,18 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
     val mainViewModel: MainViewModel by viewModels()
     private lateinit var groupPagerAdapter: GroupPagerAdapter
     private var tabMediator: TabLayoutMediator? = null
+
+    // H2 VPN Stats
+    private var connectStartTime = 0L
+    private var totalUp = 0L
+    private var totalDown = 0L
+    private val statsHandler = Handler(Looper.getMainLooper())
+    private val statsRunnable = object : Runnable {
+        override fun run() {
+            updateStats()
+            statsHandler.postDelayed(this, 1000)
+        }
+    }
 
     private val requestVpnPermission = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         if (it.resultCode == RESULT_OK) {
@@ -191,12 +205,55 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
             binding.fab.contentDescription = getString(R.string.action_stop_service)
             setTestState(getString(R.string.connection_connected))
             binding.layoutTest.isFocusable = true
+            // Start stats
+            if (connectStartTime == 0L) {
+                connectStartTime = System.currentTimeMillis()
+                totalUp = 0L
+                totalDown = 0L
+            }
+            binding.tvStats.visibility = android.view.View.VISIBLE
+            statsHandler.removeCallbacks(statsRunnable)
+            statsHandler.post(statsRunnable)
         } else {
             binding.fab.setImageResource(R.drawable.ic_play_24dp)
             binding.fab.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(this, R.color.color_fab_inactive))
             binding.fab.contentDescription = getString(R.string.tasker_start_service)
             setTestState(getString(R.string.connection_not_connected))
             binding.layoutTest.isFocusable = false
+            // Stop stats
+            statsHandler.removeCallbacks(statsRunnable)
+            connectStartTime = 0L
+            binding.tvStats.visibility = android.view.View.GONE
+        }
+    }
+
+    private fun updateStats() {
+        if (connectStartTime == 0L) return
+        try {
+            val elapsed = (System.currentTimeMillis() - connectStartTime) / 1000
+            val h = elapsed / 3600
+            val m = (elapsed % 3600) / 60
+            val s = elapsed % 60
+            val timeStr = if (h > 0) String.format("%d:%02d:%02d", h, m, s) else String.format("%02d:%02d", m, s)
+
+            val up = V2RayServiceManager.queryStats(AppConfig.TAG_PROXY, AppConfig.UPLINK)
+            val down = V2RayServiceManager.queryStats(AppConfig.TAG_PROXY, AppConfig.DOWNLINK)
+            totalUp += up
+            totalDown += down
+
+            val speedUp = formatBytes(up) + "/s"
+            val speedDown = formatBytes(down) + "/s"
+
+            binding.tvStats.text = "\u23F1 $timeStr  \u2191${formatBytes(totalUp)}  \u2193${formatBytes(totalDown)}  \u2191$speedUp  \u2193$speedDown"
+        } catch (_: Exception) {}
+    }
+
+    private fun formatBytes(bytes: Long): String {
+        return when {
+            bytes < 1024 -> "${bytes}B"
+            bytes < 1024 * 1024 -> String.format("%.1fKB", bytes / 1024.0)
+            bytes < 1024 * 1024 * 1024 -> String.format("%.1fMB", bytes / (1024.0 * 1024))
+            else -> String.format("%.2fGB", bytes / (1024.0 * 1024 * 1024))
         }
     }
 
