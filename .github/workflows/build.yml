@@ -12,10 +12,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v6
-      with:
-        submodules: 'recursive'
-        fetch-depth: '0'
+      uses: actions/checkout@v4
 
     - name: Setup Android SDK
       uses: android-actions/setup-android@v4.0.1
@@ -43,7 +40,7 @@ jobs:
     - name: Fetch AndroidLibXrayLite tag
       run: |
         pushd AndroidLibXrayLite
-        CURRENT_TAG=$(git describe --tags --abbrev=0)
+        CURRENT_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v26.4.19")
         echo "CURRENT_TAG=$CURRENT_TAG" >> $GITHUB_ENV
         popd
 
@@ -74,10 +71,10 @@ jobs:
         echo "sdk.dir=${ANDROID_HOME}" > local.properties
         chmod 755 gradlew
         ./gradlew licenseFdroidReleaseReport
-        ./gradlew assembleRelease -Pandroid.injected.signing.store.file=${{ steps.android_keystore.outputs.filePath }} -Pandroid.injected.signing.store.password=${{ secrets.STORE_PASSWORD }} -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
+        ./gradlew assembleFdroidRelease -PABI_FILTERS=arm64-v8a -Pandroid.injected.signing.store.file=${{ steps.android_keystore.outputs.filePath }} -Pandroid.injected.signing.store.password=${{ secrets.STORE_PASSWORD }} -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
 
     - name: Upload APK
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@v4
       with:
         name: h2vpn-apk
-        path: ${{ github.workspace }}/V2rayNG/app/build/outputs/apk/*/release/*arm64-v8a*.apk
+        path: V2rayNG/app/build/outputs/apk/fdroid/release/*.apk
