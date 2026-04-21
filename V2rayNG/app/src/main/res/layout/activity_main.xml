@@ -63,7 +63,8 @@
                     <LinearLayout
                         android:id="@+id/layout_test"
                         android:layout_width="match_parent"
-                        android:layout_height="@dimen/view_height_dp64"
+                        android:layout_height="wrap_content"
+                        android:minHeight="@dimen/view_height_dp64"
                         android:clickable="true"
                         android:contentDescription="@string/connection_test_pending"
                         android:focusable="true"
