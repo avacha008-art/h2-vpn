@@ -111,6 +111,7 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
 
         binding.fab.setOnClickListener { handleFabAction() }
         binding.layoutTest.setOnClickListener { handleLayoutTestClick() }
+        binding.btnSpeedtest.setOnClickListener { runSpeedTest() }
 
         setupGroupTab()
         setupViewModel()
@@ -207,13 +208,12 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
             binding.fab.contentDescription = getString(R.string.action_stop_service)
             setTestState(getString(R.string.connection_connected))
             binding.layoutTest.isFocusable = true
-            // Start stats
             if (connectStartTime == 0L) {
                 connectStartTime = System.currentTimeMillis()
                 totalUp = 0L
                 totalDown = 0L
             }
-            binding.tvStats.visibility = android.view.View.VISIBLE
+            binding.statsPanel.visibility = android.view.View.VISIBLE
             statsHandler.removeCallbacks(statsRunnable)
             statsHandler.post(statsRunnable)
         } else {
@@ -222,10 +222,9 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
             binding.fab.contentDescription = getString(R.string.tasker_start_service)
             setTestState(getString(R.string.connection_not_connected))
             binding.layoutTest.isFocusable = false
-            // Stop stats
             statsHandler.removeCallbacks(statsRunnable)
             connectStartTime = 0L
-            binding.tvStats.visibility = android.view.View.GONE
+            binding.statsPanel.visibility = android.view.View.GONE
         }
     }
 
@@ -236,19 +235,54 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
         val m = (elapsed % 3600) / 60
         val s = elapsed % 60
         val timeStr = if (h > 0) String.format("%d:%02d:%02d", h, m, s) else String.format("%02d:%02d", m, s)
+        binding.tvStatsTime.text = "\u23F1 $timeStr"
 
         try {
             val up = V2RayServiceManager.queryStats(AppConfig.TAG_PROXY, AppConfig.UPLINK)
             val down = V2RayServiceManager.queryStats(AppConfig.TAG_PROXY, AppConfig.DOWNLINK)
             totalUp += up
             totalDown += down
-            val speedUp = formatBytes(up) + "/s"
-            val speedDown = formatBytes(down) + "/s"
-            binding.tvStats.text = "\u23F1 $timeStr  \u2191${formatBytes(totalUp)} \u2193${formatBytes(totalDown)}  \u25B2$speedUp \u25BC$speedDown"
+            binding.tvStatsTraffic.text = "\u2191 ${formatBytes(totalUp)}  \u2193 ${formatBytes(totalDown)}"
+            binding.tvStatsSpeed.text = "\u25B2 ${formatBytes(up)}/s  \u25BC ${formatBytes(down)}/s"
         } catch (_: Exception) {
-            binding.tvStats.text = "\u23F1 $timeStr"
+            binding.tvStatsTraffic.text = "\u2191 0B  \u2193 0B"
+            binding.tvStatsSpeed.text = ""
         }
-        binding.tvStats.visibility = android.view.View.VISIBLE
+    }
+
+    private fun runSpeedTest() {
+        binding.tvSpeedtestResult.visibility = android.view.View.VISIBLE
+        binding.tvSpeedtestResult.text = "\u23F3 \u0422\u0435\u0441\u0442\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u0435..."
+        binding.btnSpeedtest.isEnabled = false
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val testUrl = java.net.URL("https://speed.cloudflare.com/__down?bytes=5000000")
+                val conn = testUrl.openConnection() as java.net.HttpURLConnection
+                conn.connectTimeout = 10000
+                conn.readTimeout = 15000
+                val startMs = System.currentTimeMillis()
+                val input = conn.inputStream
+                val buf = ByteArray(8192)
+                var totalBytes = 0L
+                while (true) {
+                    val read = input.read(buf)
+                    if (read == -1) break
+                    totalBytes += read
+                }
+                input.close()
+                val duration = (System.currentTimeMillis() - startMs) / 1000.0
+                val speedMbps = if (duration > 0) (totalBytes * 8.0) / (duration * 1000000) else 0.0
+                launch(Dispatchers.Main) {
+                    binding.tvSpeedtestResult.text = String.format("\u2713 %.1f \u041C\u0431\u0438\u0442/\u0441 (%.1f \u0441)", speedMbps, duration)
+                    binding.btnSpeedtest.isEnabled = true
+                }
+            } catch (e: Exception) {
+                launch(Dispatchers.Main) {
+                    binding.tvSpeedtestResult.text = "\u2717 \u041E\u0448\u0438\u0431\u043A\u0430: ${e.message}"
+                    binding.btnSpeedtest.isEnabled = true
+                }
+            }
+        }
     }
 
     private fun formatBytes(bytes: Long): String {

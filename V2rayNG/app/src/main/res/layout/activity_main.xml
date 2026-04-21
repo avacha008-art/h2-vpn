@@ -52,6 +52,65 @@
                         app:tabMode="scrollable"
                         app:tabTextAppearance="@style/TabLayoutTextStyle" />
 
+                    <LinearLayout
+                        android:id="@+id/stats_panel"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="#1A1A2E"
+                        android:orientation="vertical"
+                        android:padding="12dp"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:id="@+id/tv_stats_time"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textSize="20sp"
+                            android:textStyle="bold"
+                            android:textColor="#00D4AA"
+                            android:fontFamily="monospace" />
+
+                        <TextView
+                            android:id="@+id/tv_stats_traffic"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:paddingTop="4dp"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:textColor="#00D4AA"
+                            android:fontFamily="monospace" />
+
+                        <TextView
+                            android:id="@+id/tv_stats_speed"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:paddingTop="2dp"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:textColor="#00D4AA"
+                            android:fontFamily="monospace" />
+
+                        <TextView
+                            android:id="@+id/tv_speedtest_result"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:paddingTop="4dp"
+                            android:textSize="14sp"
+                            android:textColor="#FFFFFF"
+                            android:visibility="gone" />
+
+                        <Button
+                            android:id="@+id/btn_speedtest"
+                            android:layout_width="match_parent"
+                            android:layout_height="40dp"
+                            android:layout_marginTop="8dp"
+                            android:text="Тест скорости"
+                            android:textSize="14sp"
+                            android:backgroundTint="#00D4AA"
+                            android:textColor="#1A1A2E" />
+
+                    </LinearLayout>
+
                     <androidx.viewpager2.widget.ViewPager2
                         android:id="@+id/view_pager"
                         android:layout_width="match_parent"
@@ -87,19 +146,6 @@
                             android:paddingStart="@dimen/padding_spacing_dp16"
                             android:text="@string/connection_test_pending"
                             android:textAppearance="@style/TextAppearance.AppCompat.Small" />
-
-                        <TextView
-                            android:id="@+id/tv_stats"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:paddingStart="@dimen/padding_spacing_dp16"
-                            android:paddingEnd="@dimen/padding_spacing_dp16"
-                            android:paddingTop="2dp"
-                            android:textSize="14sp"
-                            android:textColor="#00D4AA"
-                            android:textStyle="bold"
-                            android:fontFamily="monospace"
-                            android:visibility="gone" />
 
                     </LinearLayout>
                 </LinearLayout>
