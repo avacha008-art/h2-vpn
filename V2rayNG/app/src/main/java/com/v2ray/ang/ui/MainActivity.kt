@@ -81,6 +81,8 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(binding.root)
+        // H2 VPN: auto-enable speed stats for live display
+        MmkvManager.encodeSettings(AppConfig.PREF_SPEED_ENABLED, true)
         setupToolbar(binding.toolbar, false, getString(R.string.title_server))
 
         // setup viewpager and tablayout
@@ -229,23 +231,24 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
 
     private fun updateStats() {
         if (connectStartTime == 0L) return
-        try {
-            val elapsed = (System.currentTimeMillis() - connectStartTime) / 1000
-            val h = elapsed / 3600
-            val m = (elapsed % 3600) / 60
-            val s = elapsed % 60
-            val timeStr = if (h > 0) String.format("%d:%02d:%02d", h, m, s) else String.format("%02d:%02d", m, s)
+        val elapsed = (System.currentTimeMillis() - connectStartTime) / 1000
+        val h = elapsed / 3600
+        val m = (elapsed % 3600) / 60
+        val s = elapsed % 60
+        val timeStr = if (h > 0) String.format("%d:%02d:%02d", h, m, s) else String.format("%02d:%02d", m, s)
 
+        try {
             val up = V2RayServiceManager.queryStats(AppConfig.TAG_PROXY, AppConfig.UPLINK)
             val down = V2RayServiceManager.queryStats(AppConfig.TAG_PROXY, AppConfig.DOWNLINK)
             totalUp += up
             totalDown += down
-
             val speedUp = formatBytes(up) + "/s"
             val speedDown = formatBytes(down) + "/s"
-
-            binding.tvStats.text = "\u23F1 $timeStr  \u2191${formatBytes(totalUp)}  \u2193${formatBytes(totalDown)}  \u2191$speedUp  \u2193$speedDown"
-        } catch (_: Exception) {}
+            binding.tvStats.text = "\u23F1 $timeStr  \u2191${formatBytes(totalUp)} \u2193${formatBytes(totalDown)}  \u25B2$speedUp \u25BC$speedDown"
+        } catch (_: Exception) {
+            binding.tvStats.text = "\u23F1 $timeStr"
+        }
+        binding.tvStats.visibility = android.view.View.VISIBLE
     }
 
     private fun formatBytes(bytes: Long): String {

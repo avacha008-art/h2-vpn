@@ -94,8 +94,9 @@
                             android:paddingStart="@dimen/padding_spacing_dp16"
                             android:paddingEnd="@dimen/padding_spacing_dp16"
                             android:paddingTop="2dp"
-                            android:textSize="12sp"
+                            android:textSize="14sp"
                             android:textColor="#00D4AA"
+                            android:textStyle="bold"
                             android:fontFamily="monospace"
                             android:visibility="gone" />
 
