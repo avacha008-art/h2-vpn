@@ -91,16 +91,6 @@
                             android:fontFamily="monospace" />
 
                         <TextView
-                            android:id="@+id/tv_stats_speed"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:textSize="16sp"
-                            android:textColor="#00D4AA"
-                            android:textStyle="bold"
-                            android:fontFamily="monospace" />
-
-                        <TextView
                             android:id="@+id/tv_speedtest_result"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
