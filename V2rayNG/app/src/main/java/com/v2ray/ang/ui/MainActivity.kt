@@ -235,8 +235,8 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
         val m = (elapsed % 3600) / 60
         val s = elapsed % 60
         val timeStr = if (h > 0) String.format("%d:%02d:%02d", h, m, s) else String.format("%02d:%02d", m, s)
-        binding.tvStatsTime.text = "\u23F1 $timeStr"
 
+        var line = "\u23F1$timeStr"
         try {
             val proxyUp = V2RayServiceManager.queryStats(AppConfig.TAG_PROXY, AppConfig.UPLINK)
             val proxyDown = V2RayServiceManager.queryStats(AppConfig.TAG_PROXY, AppConfig.DOWNLINK)
@@ -246,49 +246,30 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
             val down = proxyDown + directDown
             totalUp += up
             totalDown += down
-            binding.tvStatsTraffic.text = "\u2191 ${formatBytes(totalUp)}   \u2193 ${formatBytes(totalDown)}"
-            binding.tvStatsSpeed.text = "\u25B2 ${formatBytes(up)}/s   \u25BC ${formatBytes(down)}/s"
-        } catch (_: Exception) {
-            binding.tvStatsTraffic.text = "\u2191 0B   \u2193 0B"
-            binding.tvStatsSpeed.text = "\u25B2 0B/s   \u25BC 0B/s"
-        }
+            if (totalUp + totalDown > 0) {
+                line += "  \u2191${formatBytes(totalUp)} \u2193${formatBytes(totalDown)}"
+                line += "  \u25B2${formatBytes(up)}/s \u25BC${formatBytes(down)}/s"
+            }
+        } catch (_: Exception) {}
+        binding.tvStatsLine.text = line
     }
 
     private fun runSpeedTest() {
         binding.tvSpeedtestResult.visibility = android.view.View.VISIBLE
-        binding.tvSpeedtestResult.text = "\u23F3 Ping..."
+        binding.tvSpeedtestResult.text = "\u23F3 \u0422\u0435\u0441\u0442..."
         binding.btnSpeedtest.isEnabled = false
+
+        // Use built-in ping test
+        mainViewModel.testCurrentServerRealPing()
+
+        // Also do download speed test
         lifecycleScope.launch(Dispatchers.IO) {
-            val result = StringBuilder()
-            // 1. Ping - TCP connect time to our server
             try {
-                val pingTimes = mutableListOf<Long>()
-                repeat(3) {
-                    val start = System.currentTimeMillis()
-                    val sock = java.net.Socket()
-                    sock.connect(java.net.InetSocketAddress("45.38.190.244", 443), 5000)
-                    val elapsed = System.currentTimeMillis() - start
-                    pingTimes.add(elapsed)
-                    sock.close()
-                    Thread.sleep(100)
-                }
-                val avg = pingTimes.average()
-                result.append(String.format("Ping: %.0f ms", avg))
-            } catch (e: Exception) {
-                result.append("Ping: \u2717 ${e.message?.take(20) ?: ""}")
-            }
-
-            launch(Dispatchers.Main) {
-                binding.tvSpeedtestResult.text = "$result | \u23F3 \u0421\u043A\u043E\u0440\u043E\u0441\u0442\u044C..."
-            }
-
-            // 2. Download speed - Cloudflare CDN 1MB
-            try {
-                val url = java.net.URL("https://speed.cloudflare.com/__down?bytes=1000000")
+                val url = java.net.URL("http://speedtest.tele2.net/1MB.zip")
                 val conn = url.openConnection() as java.net.HttpURLConnection
                 conn.connectTimeout = 10000
-                conn.readTimeout = 15000
-                conn.setRequestProperty("User-Agent", "Mozilla/5.0")
+                conn.readTimeout = 20000
+                conn.instanceFollowRedirects = true
                 val startMs = System.currentTimeMillis()
                 val input = conn.inputStream
                 val buf = ByteArray(16384)
@@ -302,15 +283,13 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
                 conn.disconnect()
                 val duration = (System.currentTimeMillis() - startMs) / 1000.0
                 val speedMbps = if (duration > 0) (totalBytes * 8.0) / (duration * 1000000) else 0.0
-                result.append(String.format(" | \u2193 %.1f \u041C\u0431\u0438\u0442/\u0441", speedMbps))
                 launch(Dispatchers.Main) {
-                    binding.tvSpeedtestResult.text = "\u2713 $result"
+                    binding.tvSpeedtestResult.text = String.format("\u2193 %.1f \u041C\u0431\u0438\u0442/\u0441", speedMbps)
                     binding.btnSpeedtest.isEnabled = true
                 }
             } catch (e: Exception) {
-                result.append(" | \u2193 \u2717 ${e.message?.take(30) ?: ""}")
                 launch(Dispatchers.Main) {
-                    binding.tvSpeedtestResult.text = "$result"
+                    binding.tvSpeedtestResult.text = "\u2717 ${e.message?.take(40) ?: ""}"
                     binding.btnSpeedtest.isEnabled = true
                 }
             }

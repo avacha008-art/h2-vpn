@@ -66,32 +66,10 @@
                         android:visibility="gone">
 
                         <TextView
-                            android:id="@+id/tv_stats_time"
+                            android:id="@+id/tv_stats_line"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_gravity="center"
-                            android:textSize="22sp"
-                            android:textStyle="bold"
-                            android:textColor="#00D4AA"
-                            android:fontFamily="monospace" />
-
-                        <TextView
-                            android:id="@+id/tv_stats_traffic"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_gravity="center"
-                            android:layout_marginTop="6dp"
-                            android:textSize="16sp"
-                            android:textStyle="bold"
-                            android:textColor="#00D4AA"
-                            android:fontFamily="monospace" />
-
-                        <TextView
-                            android:id="@+id/tv_stats_speed"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_gravity="center"
-                            android:layout_marginTop="4dp"
                             android:textSize="16sp"
                             android:textStyle="bold"
                             android:textColor="#00D4AA"
