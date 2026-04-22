@@ -248,10 +248,10 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
         if (curTx < 0) curTx = lastTx
         if (curRx < 0) curRx = lastRx
 
-        val totalUp = if (curTx > startTx) curTx - startTx else 0L
-        val totalDown = if (curRx > startRx) curRx - startRx else 0L
-        val speedUp = if (curTx > lastTx) curTx - lastTx else 0L
-        val speedDown = if (curRx > lastRx) curRx - lastRx else 0L
+        val totalUp = curTx - startTx
+        val totalDown = curRx - startRx
+        val speedUp = curTx - lastTx
+        val speedDown = curRx - lastRx
         lastTx = curTx
         lastRx = curRx
 
@@ -265,8 +265,6 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
         binding.btnSpeedtest.isEnabled = false
         lifecycleScope.launch(Dispatchers.IO) {
             val result = StringBuilder()
-
-            // 1. Ping
             try {
                 val pings = mutableListOf<Long>()
                 repeat(3) {
@@ -278,46 +276,31 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
                     Thread.sleep(100)
                 }
                 result.append(String.format("Ping: %.0f ms", pings.average()))
-            } catch (_: Exception) {
-                result.append("Ping: \u2717")
-            }
+            } catch (_: Exception) { result.append("Ping: \u2717") }
 
-            launch(Dispatchers.Main) {
-                binding.tvSpeedtestResult.text = "$result | \u23F3 \u0417\u0430\u043C\u0435\u0440..."
-            }
+            launch(Dispatchers.Main) { binding.tvSpeedtestResult.text = "$result | \u23F3 \u0417\u0430\u043C\u0435\u0440..." }
 
-            // 2. Download 1MB from our server
-            try {
-                val conn = java.net.URL("http://45.38.190.244/speedtest.bin").openConnection() as java.net.HttpURLConnection
-                conn.connectTimeout = 8000
-                conn.readTimeout = 20000
-                conn.connect()
-                val startMs = System.currentTimeMillis()
-                val input = conn.inputStream
-                val buf = ByteArray(32768)
-                var total = 0L
-                while (true) {
-                    val r = input.read(buf)
-                    if (r == -1) break
-                    total += r
-                }
-                input.close()
-                conn.disconnect()
-                val dur = (System.currentTimeMillis() - startMs) / 1000.0
-                if (dur > 0.05 && total > 100000) {
-                    val mbps = (total * 8.0) / (dur * 1000000)
-                    result.append(String.format(" | \u2193 %.1f \u041C\u0431\u0438\u0442/\u0441", mbps))
-                } else {
-                    result.append(" | \u2193 \u2717")
-                }
-            } catch (_: Exception) {
-                result.append(" | \u2193 \u2717")
+            val urls = listOf("http://speedtest.tele2.net/1MB.zip", "http://proof.ovh.net/files/1Mb.dat")
+            var done = false
+            for (u in urls) {
+                if (done) break
+                try {
+                    val conn = java.net.URL(u).openConnection() as java.net.HttpURLConnection
+                    conn.connectTimeout = 8000; conn.readTimeout = 20000; conn.instanceFollowRedirects = true
+                    conn.connect()
+                    val t0 = System.currentTimeMillis()
+                    val input = conn.inputStream; val buf = ByteArray(32768); var total = 0L
+                    while (true) { val r = input.read(buf); if (r == -1) break; total += r }
+                    input.close(); conn.disconnect()
+                    val dur = (System.currentTimeMillis() - t0) / 1000.0
+                    if (dur > 0.1 && total > 50000) {
+                        result.append(String.format(" | \u2193 %.1f \u041C\u0431\u0438\u0442/\u0441", (total * 8.0) / (dur * 1000000)))
+                        done = true
+                    }
+                } catch (_: Exception) {}
             }
-
-            launch(Dispatchers.Main) {
-                binding.tvSpeedtestResult.text = "\u2713 $result"
-                binding.btnSpeedtest.isEnabled = true
-            }
+            if (!done) result.append(" | \u2193 \u2717")
+            launch(Dispatchers.Main) { binding.tvSpeedtestResult.text = "\u2713 $result"; binding.btnSpeedtest.isEnabled = true }
         }
     }
 
