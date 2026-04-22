@@ -252,33 +252,63 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
 
     private fun runSpeedTest() {
         binding.tvSpeedtestResult.visibility = android.view.View.VISIBLE
-        binding.tvSpeedtestResult.text = "\u23F3 \u0422\u0435\u0441\u0442\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u0435..."
+        binding.tvSpeedtestResult.text = "\u23F3 Ping..."
         binding.btnSpeedtest.isEnabled = false
         lifecycleScope.launch(Dispatchers.IO) {
+            val result = StringBuilder()
+            // 1. Ping - TCP connect time
             try {
-                val testUrl = java.net.URL("https://speed.cloudflare.com/__down?bytes=5000000")
-                val conn = testUrl.openConnection() as java.net.HttpURLConnection
-                conn.connectTimeout = 10000
-                conn.readTimeout = 15000
-                val startMs = System.currentTimeMillis()
-                val input = conn.inputStream
-                val buf = ByteArray(8192)
-                var totalBytes = 0L
-                while (true) {
-                    val read = input.read(buf)
-                    if (read == -1) break
-                    totalBytes += read
+                val pingTimes = mutableListOf<Long>()
+                repeat(3) {
+                    val start = System.currentTimeMillis()
+                    val sock = java.net.Socket()
+                    sock.connect(java.net.InetSocketAddress("h2msg2.duckdns.org", 8443), 5000)
+                    val elapsed = System.currentTimeMillis() - start
+                    pingTimes.add(elapsed)
+                    sock.close()
                 }
-                input.close()
+                val avg = pingTimes.average()
+                result.append(String.format("Ping: %.0f ms", avg))
+            } catch (e: Exception) {
+                result.append("Ping: \u2717")
+            }
+            // 2. Download speed
+            launch(Dispatchers.Main) {
+                binding.tvSpeedtestResult.text = "$result | \u23F3 \u0421\u043A\u043E\u0440\u043E\u0441\u0442\u044C..."
+            }
+            try {
+                val urls = listOf(
+                    "https://www.google.com/generate_204",
+                    "https://h2msg2.duckdns.org:8443/api/health"
+                )
+                // Download 2MB from multiple requests to measure speed
+                val startMs = System.currentTimeMillis()
+                var totalBytes = 0L
+                repeat(10) {
+                    val url = java.net.URL("https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png")
+                    val conn = url.openConnection() as java.net.HttpURLConnection
+                    conn.connectTimeout = 5000
+                    conn.readTimeout = 10000
+                    val input = conn.inputStream
+                    val buf = ByteArray(8192)
+                    while (true) {
+                        val read = input.read(buf)
+                        if (read == -1) break
+                        totalBytes += read
+                    }
+                    input.close()
+                }
                 val duration = (System.currentTimeMillis() - startMs) / 1000.0
                 val speedMbps = if (duration > 0) (totalBytes * 8.0) / (duration * 1000000) else 0.0
+                result.append(String.format(" | \u2193 %.1f \u041C\u0431\u0438\u0442/\u0441", speedMbps))
                 launch(Dispatchers.Main) {
-                    binding.tvSpeedtestResult.text = String.format("\u2713 %.1f \u041C\u0431\u0438\u0442/\u0441 (%.1f \u0441)", speedMbps, duration)
+                    binding.tvSpeedtestResult.text = "\u2713 $result"
                     binding.btnSpeedtest.isEnabled = true
                 }
             } catch (e: Exception) {
+                result.append(" | \u0421\u043A\u043E\u0440\u043E\u0441\u0442\u044C: \u2717")
                 launch(Dispatchers.Main) {
-                    binding.tvSpeedtestResult.text = "\u2717 \u041E\u0448\u0438\u0431\u043A\u0430: ${e.message}"
+                    binding.tvSpeedtestResult.text = "$result"
                     binding.btnSpeedtest.isEnabled = true
                 }
             }
