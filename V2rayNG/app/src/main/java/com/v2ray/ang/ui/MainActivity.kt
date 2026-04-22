@@ -246,7 +246,7 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
         val m = (elapsed % 3600) / 60
         val s = elapsed % 60
         val timeStr = if (h > 0) String.format("%d:%02d:%02d", h, m, s) else String.format("%02d:%02d", m, s)
-        binding.tvStatsTime.text = "H2 VPN v2.5  \u23F1 $timeStr"
+        binding.tvStatsTime.text = "v2.5 \u23F1$timeStr"
 
         // Fetch server stats every 2 seconds
         fetchCount++
@@ -270,7 +270,7 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
                         }
                         val totalUp = up - serverStartUp
                         val totalDown = down - serverStartDown
-                        binding.tvStatsTraffic.text = "\u041E\u0442\u043F\u0440: ${formatBytes(totalUp)}   \u041F\u043E\u043B\u0443\u0447: ${formatBytes(totalDown)}"
+                        binding.tvStatsTraffic.text = "\u2191${formatBytes(totalUp)}  \u2193${formatBytes(totalDown)}"
 
                         if (lastFetchTime > 0 && up >= serverLastUp && down >= serverLastDown) {
                             val dt = (now - lastFetchTime) / 1000.0
@@ -283,10 +283,10 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
                                 if (speedDownHistory.size > 3) speedDownHistory.removeAt(0)
                                 val avgUp = speedUpHistory.average().toLong()
                                 val avgDown = speedDownHistory.average().toLong()
-                                binding.tvStatsSpeed.text = "\u2191 ${formatBytes(avgUp)}/s   \u2193 ${formatBytes(avgDown)}/s"
+                                binding.tvStatsSpeed.text = "\u2191${formatBytes(avgUp)}/s  \u2193${formatBytes(avgDown)}/s"
                             }
                         } else {
-                            binding.tvStatsSpeed.text = "\u2191 0B/s   \u2193 0B/s"
+                            binding.tvStatsSpeed.text = "\u21910B/s  \u21930B/s"
                         }
                         serverLastUp = up
                         serverLastDown = down
