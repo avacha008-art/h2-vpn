@@ -59,6 +59,8 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
     private var serverLastDown = 0L
     private var lastFetchTime = 0L
     private var fetchCount = 0
+    private val speedUpHistory = mutableListOf<Long>()
+    private val speedDownHistory = mutableListOf<Long>()
     private val statsHandler = Handler(Looper.getMainLooper())
     private val statsRunnable = object : Runnable {
         override fun run() {
@@ -218,6 +220,8 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
                 serverLastDown = 0L
                 lastFetchTime = 0L
                 fetchCount = 0
+                speedUpHistory.clear()
+                speedDownHistory.clear()
             }
             binding.statsPanel.visibility = android.view.View.VISIBLE
             statsHandler.removeCallbacks(statsRunnable)
@@ -236,7 +240,7 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
 
     private fun updateStats() {
         if (connectStartTime == 0L) return
-        // Timer - always update
+        // Timer
         val elapsed = (System.currentTimeMillis() - connectStartTime) / 1000
         val h = elapsed / 3600
         val m = (elapsed % 3600) / 60
@@ -244,14 +248,14 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
         val timeStr = if (h > 0) String.format("%d:%02d:%02d", h, m, s) else String.format("%02d:%02d", m, s)
         binding.tvStatsTime.text = "\u23F1 $timeStr"
 
-        // Fetch server stats every 3 seconds
+        // Fetch server stats every 2 seconds
         fetchCount++
-        if (fetchCount % 3 == 1) {
+        if (fetchCount % 2 == 0) {
             lifecycleScope.launch(Dispatchers.IO) {
                 try {
                     val conn = java.net.URL("http://45.38.190.244/vpnstats.json").openConnection() as java.net.HttpURLConnection
-                    conn.connectTimeout = 3000
-                    conn.readTimeout = 3000
+                    conn.connectTimeout = 2000
+                    conn.readTimeout = 2000
                     val body = conn.inputStream.bufferedReader().readText()
                     conn.disconnect()
                     val obj = org.json.JSONObject(body)
@@ -268,12 +272,18 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
                         val totalDown = down - serverStartDown
                         binding.tvStatsTraffic.text = "\u2191 ${formatBytes(totalUp)}   \u2193 ${formatBytes(totalDown)}"
 
-                        if (lastFetchTime > 0) {
+                        if (lastFetchTime > 0 && up >= serverLastUp && down >= serverLastDown) {
                             val dt = (now - lastFetchTime) / 1000.0
-                            if (dt > 0) {
-                                val speedUp = ((up - serverLastUp) / dt).toLong()
-                                val speedDown = ((down - serverLastDown) / dt).toLong()
-                                binding.tvStatsSpeed.text = "\u25B2 ${formatBytes(speedUp)}/s   \u25BC ${formatBytes(speedDown)}/s"
+                            if (dt > 0.5) {
+                                val sUp = ((up - serverLastUp) / dt).toLong()
+                                val sDown = ((down - serverLastDown) / dt).toLong()
+                                speedUpHistory.add(sUp)
+                                speedDownHistory.add(sDown)
+                                if (speedUpHistory.size > 3) speedUpHistory.removeAt(0)
+                                if (speedDownHistory.size > 3) speedDownHistory.removeAt(0)
+                                val avgUp = speedUpHistory.average().toLong()
+                                val avgDown = speedDownHistory.average().toLong()
+                                binding.tvStatsSpeed.text = "\u25B2 ${formatBytes(avgUp)}/s   \u25BC ${formatBytes(avgDown)}/s"
                             }
                         } else {
                             binding.tvStatsSpeed.text = "\u25B2 0B/s   \u25BC 0B/s"
