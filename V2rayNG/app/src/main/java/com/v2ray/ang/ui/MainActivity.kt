@@ -280,7 +280,7 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
 
             launch(Dispatchers.Main) { binding.tvSpeedtestResult.text = "$result | \u23F3 \u0417\u0430\u043C\u0435\u0440..." }
 
-            val urls = listOf("http://speedtest.tele2.net/1MB.zip", "http://proof.ovh.net/files/1Mb.dat")
+            val urls = listOf("http://45.38.190.244/speedtest.bin", "http://speedtest.tele2.net/1MB.zip", "http://proof.ovh.net/files/1Mb.dat")
             var done = false
             for (u in urls) {
                 if (done) break
