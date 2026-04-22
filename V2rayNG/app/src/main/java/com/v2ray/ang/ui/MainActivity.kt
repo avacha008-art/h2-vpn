@@ -53,10 +53,10 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
 
     // H2 VPN Stats
     private var connectStartTime = 0L
-    private var startTunTx = 0L
-    private var startTunRx = 0L
-    private var lastTunTx = 0L
-    private var lastTunRx = 0L
+    private var startTx = 0L
+    private var startRx = 0L
+    private var lastTx = 0L
+    private var lastRx = 0L
     private val statsHandler = Handler(Looper.getMainLooper())
     private val statsRunnable = object : Runnable {
         override fun run() {
@@ -210,11 +210,13 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
             binding.layoutTest.isFocusable = true
             if (connectStartTime == 0L) {
                 connectStartTime = System.currentTimeMillis()
-                val tun = readTunStats()
-                startTunTx = tun.first
-                startTunRx = tun.second
-                lastTunTx = startTunTx
-                lastTunRx = startTunRx
+                val uid = android.os.Process.myUid()
+                startTx = android.net.TrafficStats.getUidTxBytes(uid)
+                startRx = android.net.TrafficStats.getUidRxBytes(uid)
+                if (startTx < 0) startTx = 0
+                if (startRx < 0) startRx = 0
+                lastTx = startTx
+                lastRx = startRx
             }
             binding.statsPanel.visibility = android.view.View.VISIBLE
             statsHandler.removeCallbacks(statsRunnable)
@@ -240,35 +242,21 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
         val timeStr = if (h > 0) String.format("%d:%02d:%02d", h, m, s) else String.format("%02d:%02d", m, s)
         binding.tvStatsTime.text = "\u23F1 $timeStr"
 
-        val tun = readTunStats()
-        val curTx = tun.first   // upload (app → internet)
-        val curRx = tun.second  // download (internet → app)
+        val uid = android.os.Process.myUid()
+        var curTx = android.net.TrafficStats.getUidTxBytes(uid)
+        var curRx = android.net.TrafficStats.getUidRxBytes(uid)
+        if (curTx < 0) curTx = lastTx
+        if (curRx < 0) curRx = lastRx
 
-        val totalUp = if (curTx > startTunTx) curTx - startTunTx else 0L
-        val totalDown = if (curRx > startTunRx) curRx - startTunRx else 0L
-        val speedUp = if (curTx > lastTunTx) curTx - lastTunTx else 0L
-        val speedDown = if (curRx > lastTunRx) curRx - lastTunRx else 0L
-        lastTunTx = curTx
-        lastTunRx = curRx
+        val totalUp = if (curTx > startTx) curTx - startTx else 0L
+        val totalDown = if (curRx > startRx) curRx - startRx else 0L
+        val speedUp = if (curTx > lastTx) curTx - lastTx else 0L
+        val speedDown = if (curRx > lastRx) curRx - lastRx else 0L
+        lastTx = curTx
+        lastRx = curRx
 
         binding.tvStatsTraffic.text = "\u2191 ${formatBytes(totalUp)}   \u2193 ${formatBytes(totalDown)}"
         binding.tvStatsSpeed.text = "\u25B2 ${formatBytes(speedUp)}/s   \u25BC ${formatBytes(speedDown)}/s"
-    }
-
-    private fun readTunStats(): Pair<Long, Long> {
-        try {
-            val lines = java.io.File("/proc/net/dev").readLines()
-            for (line in lines) {
-                if (line.contains("tun")) {
-                    val parts = line.trim().split("\\s+".toRegex())
-                    // /proc/net/dev: iface rx_bytes rx_packets ... tx_bytes(col 9) tx_packets ...
-                    val rx = parts[1].toLong()  // tun RX = downloaded (internet → app)
-                    val tx = parts[9].toLong()  // tun TX = uploaded (app → internet)
-                    return Pair(tx, rx)  // return (upload, download)
-                }
-            }
-        } catch (_: Exception) {}
-        return Pair(0L, 0L)
     }
 
     private fun runSpeedTest() {
@@ -278,7 +266,7 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
         lifecycleScope.launch(Dispatchers.IO) {
             val result = StringBuilder()
 
-            // 1. Ping - TCP connect to google
+            // 1. Ping
             try {
                 val pings = mutableListOf<Long>()
                 repeat(3) {
@@ -298,41 +286,33 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
                 binding.tvSpeedtestResult.text = "$result | \u23F3 \u0417\u0430\u043C\u0435\u0440..."
             }
 
-            // 2. Download speed - only 1MB+ files
-            val urls = listOf(
-                "http://speedtest.tele2.net/1MB.zip",
-                "http://proof.ovh.net/files/1Mb.dat"
-            )
-            var speedDone = false
-            for (testUrl in urls) {
-                if (speedDone) break
-                try {
-                    val conn = java.net.URL(testUrl).openConnection() as java.net.HttpURLConnection
-                    conn.connectTimeout = 8000
-                    conn.readTimeout = 20000
-                    conn.instanceFollowRedirects = true
-                    conn.setRequestProperty("User-Agent", "Mozilla/5.0")
-                    conn.connect()
-                    val startMs = System.currentTimeMillis()
-                    val input = conn.inputStream
-                    val buf = ByteArray(32768)
-                    var total = 0L
-                    while (true) {
-                        val r = input.read(buf)
-                        if (r == -1) break
-                        total += r
-                    }
-                    input.close()
-                    conn.disconnect()
-                    val dur = (System.currentTimeMillis() - startMs) / 1000.0
-                    if (dur > 0.1 && total > 100000) {
-                        val mbps = (total * 8.0) / (dur * 1000000)
-                        result.append(String.format(" | \u2193 %.1f \u041C\u0431\u0438\u0442/\u0441", mbps))
-                        speedDone = true
-                    }
-                } catch (_: Exception) {}
+            // 2. Download 1MB from our server
+            try {
+                val conn = java.net.URL("http://45.38.190.244/speedtest.bin").openConnection() as java.net.HttpURLConnection
+                conn.connectTimeout = 8000
+                conn.readTimeout = 20000
+                conn.connect()
+                val startMs = System.currentTimeMillis()
+                val input = conn.inputStream
+                val buf = ByteArray(32768)
+                var total = 0L
+                while (true) {
+                    val r = input.read(buf)
+                    if (r == -1) break
+                    total += r
+                }
+                input.close()
+                conn.disconnect()
+                val dur = (System.currentTimeMillis() - startMs) / 1000.0
+                if (dur > 0.05 && total > 100000) {
+                    val mbps = (total * 8.0) / (dur * 1000000)
+                    result.append(String.format(" | \u2193 %.1f \u041C\u0431\u0438\u0442/\u0441", mbps))
+                } else {
+                    result.append(" | \u2193 \u2717")
+                }
+            } catch (_: Exception) {
+                result.append(" | \u2193 \u2717")
             }
-            if (!speedDone) result.append(" | \u2193 \u2717")
 
             launch(Dispatchers.Main) {
                 binding.tvSpeedtestResult.text = "\u2713 $result"
