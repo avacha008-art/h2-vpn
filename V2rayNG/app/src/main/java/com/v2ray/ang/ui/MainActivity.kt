@@ -238,15 +238,19 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
         binding.tvStatsTime.text = "\u23F1 $timeStr"
 
         try {
-            val up = V2RayServiceManager.queryStats(AppConfig.TAG_PROXY, AppConfig.UPLINK)
-            val down = V2RayServiceManager.queryStats(AppConfig.TAG_PROXY, AppConfig.DOWNLINK)
+            val proxyUp = V2RayServiceManager.queryStats(AppConfig.TAG_PROXY, AppConfig.UPLINK)
+            val proxyDown = V2RayServiceManager.queryStats(AppConfig.TAG_PROXY, AppConfig.DOWNLINK)
+            val directUp = V2RayServiceManager.queryStats(AppConfig.TAG_DIRECT, AppConfig.UPLINK)
+            val directDown = V2RayServiceManager.queryStats(AppConfig.TAG_DIRECT, AppConfig.DOWNLINK)
+            val up = proxyUp + directUp
+            val down = proxyDown + directDown
             totalUp += up
             totalDown += down
-            binding.tvStatsTraffic.text = "\u2191 ${formatBytes(totalUp)}  \u2193 ${formatBytes(totalDown)}"
-            binding.tvStatsSpeed.text = "\u25B2 ${formatBytes(up)}/s  \u25BC ${formatBytes(down)}/s"
+            binding.tvStatsTraffic.text = "\u2191 ${formatBytes(totalUp)}   \u2193 ${formatBytes(totalDown)}"
+            binding.tvStatsSpeed.text = "\u25B2 ${formatBytes(up)}/s   \u25BC ${formatBytes(down)}/s"
         } catch (_: Exception) {
-            binding.tvStatsTraffic.text = "\u2191 0B  \u2193 0B"
-            binding.tvStatsSpeed.text = ""
+            binding.tvStatsTraffic.text = "\u2191 0B   \u2193 0B"
+            binding.tvStatsSpeed.text = "\u25B2 0B/s   \u25BC 0B/s"
         }
     }
 
@@ -256,48 +260,46 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
         binding.btnSpeedtest.isEnabled = false
         lifecycleScope.launch(Dispatchers.IO) {
             val result = StringBuilder()
-            // 1. Ping - TCP connect time
+            // 1. Ping - TCP connect time to our server
             try {
                 val pingTimes = mutableListOf<Long>()
                 repeat(3) {
                     val start = System.currentTimeMillis()
                     val sock = java.net.Socket()
-                    sock.connect(java.net.InetSocketAddress("h2msg2.duckdns.org", 8443), 5000)
+                    sock.connect(java.net.InetSocketAddress("45.38.190.244", 443), 5000)
                     val elapsed = System.currentTimeMillis() - start
                     pingTimes.add(elapsed)
                     sock.close()
+                    Thread.sleep(100)
                 }
                 val avg = pingTimes.average()
                 result.append(String.format("Ping: %.0f ms", avg))
             } catch (e: Exception) {
-                result.append("Ping: \u2717")
+                result.append("Ping: \u2717 ${e.message?.take(20) ?: ""}")
             }
-            // 2. Download speed
+
             launch(Dispatchers.Main) {
                 binding.tvSpeedtestResult.text = "$result | \u23F3 \u0421\u043A\u043E\u0440\u043E\u0441\u0442\u044C..."
             }
+
+            // 2. Download speed - Cloudflare CDN 1MB
             try {
-                val urls = listOf(
-                    "https://www.google.com/generate_204",
-                    "https://h2msg2.duckdns.org:8443/api/health"
-                )
-                // Download 2MB from multiple requests to measure speed
+                val url = java.net.URL("https://speed.cloudflare.com/__down?bytes=1000000")
+                val conn = url.openConnection() as java.net.HttpURLConnection
+                conn.connectTimeout = 10000
+                conn.readTimeout = 15000
+                conn.setRequestProperty("User-Agent", "Mozilla/5.0")
                 val startMs = System.currentTimeMillis()
+                val input = conn.inputStream
+                val buf = ByteArray(16384)
                 var totalBytes = 0L
-                repeat(10) {
-                    val url = java.net.URL("https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png")
-                    val conn = url.openConnection() as java.net.HttpURLConnection
-                    conn.connectTimeout = 5000
-                    conn.readTimeout = 10000
-                    val input = conn.inputStream
-                    val buf = ByteArray(8192)
-                    while (true) {
-                        val read = input.read(buf)
-                        if (read == -1) break
-                        totalBytes += read
-                    }
-                    input.close()
+                while (true) {
+                    val read = input.read(buf)
+                    if (read == -1) break
+                    totalBytes += read
                 }
+                input.close()
+                conn.disconnect()
                 val duration = (System.currentTimeMillis() - startMs) / 1000.0
                 val speedMbps = if (duration > 0) (totalBytes * 8.0) / (duration * 1000000) else 0.0
                 result.append(String.format(" | \u2193 %.1f \u041C\u0431\u0438\u0442/\u0441", speedMbps))
@@ -306,7 +308,7 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
                     binding.btnSpeedtest.isEnabled = true
                 }
             } catch (e: Exception) {
-                result.append(" | \u0421\u043A\u043E\u0440\u043E\u0441\u0442\u044C: \u2717")
+                result.append(" | \u2193 \u2717 ${e.message?.take(30) ?: ""}")
                 launch(Dispatchers.Main) {
                     binding.tvSpeedtestResult.text = "$result"
                     binding.btnSpeedtest.isEnabled = true
