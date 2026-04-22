@@ -53,8 +53,10 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
 
     // H2 VPN Stats
     private var connectStartTime = 0L
-    private var totalUp = 0L
-    private var totalDown = 0L
+    private var startTx = 0L
+    private var startRx = 0L
+    private var lastTx = 0L
+    private var lastRx = 0L
     private val statsHandler = Handler(Looper.getMainLooper())
     private val statsRunnable = object : Runnable {
         override fun run() {
@@ -81,8 +83,6 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(binding.root)
-        // H2 VPN: auto-enable speed stats for live display
-        MmkvManager.encodeSettings(AppConfig.PREF_SPEED_ENABLED, true)
         setupToolbar(binding.toolbar, false, getString(R.string.title_server))
 
         // setup viewpager and tablayout
@@ -210,8 +210,11 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
             binding.layoutTest.isFocusable = true
             if (connectStartTime == 0L) {
                 connectStartTime = System.currentTimeMillis()
-                totalUp = 0L
-                totalDown = 0L
+                val uid = android.os.Process.myUid()
+                startTx = android.net.TrafficStats.getUidTxBytes(uid)
+                startRx = android.net.TrafficStats.getUidRxBytes(uid)
+                lastTx = startTx
+                lastRx = startRx
             }
             binding.statsPanel.visibility = android.view.View.VISIBLE
             statsHandler.removeCallbacks(statsRunnable)
@@ -237,21 +240,19 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
         val timeStr = if (h > 0) String.format("%d:%02d:%02d", h, m, s) else String.format("%02d:%02d", m, s)
         binding.tvStatsTime.text = "\u23F1 $timeStr"
 
-        try {
-            val proxyUp = V2RayServiceManager.queryStats(AppConfig.TAG_PROXY, AppConfig.UPLINK)
-            val proxyDown = V2RayServiceManager.queryStats(AppConfig.TAG_PROXY, AppConfig.DOWNLINK)
-            val directUp = V2RayServiceManager.queryStats(AppConfig.TAG_DIRECT, AppConfig.UPLINK)
-            val directDown = V2RayServiceManager.queryStats(AppConfig.TAG_DIRECT, AppConfig.DOWNLINK)
-            val up = proxyUp + directUp
-            val down = proxyDown + directDown
-            totalUp += up
-            totalDown += down
-            binding.tvStatsTraffic.text = "\u2191 ${formatBytes(totalUp)}   \u2193 ${formatBytes(totalDown)}"
-            binding.tvStatsSpeed.text = "\u25B2 ${formatBytes(up)}/s   \u25BC ${formatBytes(down)}/s"
-        } catch (_: Exception) {
-            binding.tvStatsTraffic.text = "\u2191 0B   \u2193 0B"
-            binding.tvStatsSpeed.text = "\u25B2 0B/s   \u25BC 0B/s"
-        }
+        val uid = android.os.Process.myUid()
+        val curTx = android.net.TrafficStats.getUidTxBytes(uid)
+        val curRx = android.net.TrafficStats.getUidRxBytes(uid)
+
+        val totalUp = if (curTx > startTx) curTx - startTx else 0L
+        val totalDown = if (curRx > startRx) curRx - startRx else 0L
+        val speedUp = if (curTx > lastTx) curTx - lastTx else 0L
+        val speedDown = if (curRx > lastRx) curRx - lastRx else 0L
+        lastTx = curTx
+        lastRx = curRx
+
+        binding.tvStatsTraffic.text = "\u2191 ${formatBytes(totalUp)}   \u2193 ${formatBytes(totalDown)}"
+        binding.tvStatsSpeed.text = "\u25B2 ${formatBytes(speedUp)}/s   \u25BC ${formatBytes(speedDown)}/s"
     }
 
     private fun runSpeedTest() {
@@ -283,17 +284,18 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
 
             // 2. Download speed - try multiple URLs
             val urls = listOf(
+                "https://h2msg2.duckdns.org:8443/api/health",
+                "https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png",
                 "http://speedtest.tele2.net/1MB.zip",
-                "http://proof.ovh.net/files/1Mb.dat",
-                "http://ipv4.download.thinkbroadband.com/1MB.zip"
+                "http://proof.ovh.net/files/1Mb.dat"
             )
             var speedDone = false
             for (testUrl in urls) {
                 if (speedDone) break
                 try {
                     val conn = java.net.URL(testUrl).openConnection() as java.net.HttpURLConnection
-                    conn.connectTimeout = 8000
-                    conn.readTimeout = 15000
+                    conn.connectTimeout = 5000
+                    conn.readTimeout = 10000
                     conn.instanceFollowRedirects = true
                     conn.setRequestProperty("User-Agent", "Mozilla/5.0")
                     val startMs = System.currentTimeMillis()
@@ -308,9 +310,29 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
                     input.close()
                     conn.disconnect()
                     val dur = (System.currentTimeMillis() - startMs) / 1000.0
-                    if (dur > 0 && total > 0) {
-                        val mbps = (total * 8.0) / (dur * 1000000)
-                        result.append(String.format(" | \u2193 %.1f \u041C\u0431\u0438\u0442/\u0441", mbps))
+                    if (dur > 0 && total > 100) {
+                        // For small files, repeat to get better measurement
+                        if (total < 50000) {
+                            val startMs2 = System.currentTimeMillis()
+                            var total2 = 0L
+                            repeat(20) {
+                                val c2 = java.net.URL(testUrl).openConnection() as java.net.HttpURLConnection
+                                c2.connectTimeout = 5000
+                                c2.readTimeout = 10000
+                                c2.instanceFollowRedirects = true
+                                val i2 = c2.inputStream
+                                while (true) { val rd = i2.read(buf); if (rd == -1) break; total2 += rd }
+                                i2.close(); c2.disconnect()
+                            }
+                            val dur2 = (System.currentTimeMillis() - startMs2) / 1000.0
+                            if (dur2 > 0) {
+                                val mbps = (total2 * 8.0) / (dur2 * 1000000)
+                                result.append(String.format(" | \u2193 %.1f \u041C\u0431\u0438\u0442/\u0441", mbps))
+                            }
+                        } else {
+                            val mbps = (total * 8.0) / (dur * 1000000)
+                            result.append(String.format(" | \u2193 %.1f \u041C\u0431\u0438\u0442/\u0441", mbps))
+                        }
                         speedDone = true
                     }
                 } catch (_: Exception) {}
