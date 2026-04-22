@@ -53,10 +53,12 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
 
     // H2 VPN Stats
     private var connectStartTime = 0L
-    private var startTx = 0L
-    private var startRx = 0L
-    private var lastTx = 0L
-    private var lastRx = 0L
+    private var serverStartUp = 0L
+    private var serverStartDown = 0L
+    private var serverLastUp = 0L
+    private var serverLastDown = 0L
+    private var lastFetchTime = 0L
+    private var fetchCount = 0
     private val statsHandler = Handler(Looper.getMainLooper())
     private val statsRunnable = object : Runnable {
         override fun run() {
@@ -210,13 +212,12 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
             binding.layoutTest.isFocusable = true
             if (connectStartTime == 0L) {
                 connectStartTime = System.currentTimeMillis()
-                val uid = android.os.Process.myUid()
-                startTx = android.net.TrafficStats.getUidTxBytes(uid)
-                startRx = android.net.TrafficStats.getUidRxBytes(uid)
-                if (startTx < 0) startTx = 0
-                if (startRx < 0) startRx = 0
-                lastTx = startTx
-                lastRx = startRx
+                serverStartUp = 0L
+                serverStartDown = 0L
+                serverLastUp = 0L
+                serverLastDown = 0L
+                lastFetchTime = 0L
+                fetchCount = 0
             }
             binding.statsPanel.visibility = android.view.View.VISIBLE
             statsHandler.removeCallbacks(statsRunnable)
@@ -235,6 +236,7 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
 
     private fun updateStats() {
         if (connectStartTime == 0L) return
+        // Timer - always update
         val elapsed = (System.currentTimeMillis() - connectStartTime) / 1000
         val h = elapsed / 3600
         val m = (elapsed % 3600) / 60
@@ -242,21 +244,47 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
         val timeStr = if (h > 0) String.format("%d:%02d:%02d", h, m, s) else String.format("%02d:%02d", m, s)
         binding.tvStatsTime.text = "\u23F1 $timeStr"
 
-        val uid = android.os.Process.myUid()
-        var curTx = android.net.TrafficStats.getUidTxBytes(uid)
-        var curRx = android.net.TrafficStats.getUidRxBytes(uid)
-        if (curTx < 0) curTx = lastTx
-        if (curRx < 0) curRx = lastRx
+        // Fetch server stats every 3 seconds
+        fetchCount++
+        if (fetchCount % 3 == 1) {
+            lifecycleScope.launch(Dispatchers.IO) {
+                try {
+                    val conn = java.net.URL("http://45.38.190.244/vpnstats.json").openConnection() as java.net.HttpURLConnection
+                    conn.connectTimeout = 3000
+                    conn.readTimeout = 3000
+                    val body = conn.inputStream.bufferedReader().readText()
+                    conn.disconnect()
+                    val obj = org.json.JSONObject(body)
+                    val up = obj.getLong("up")
+                    val down = obj.getLong("down")
+                    val now = System.currentTimeMillis()
 
-        val totalUp = curTx - startTx
-        val totalDown = curRx - startRx
-        val speedUp = curTx - lastTx
-        val speedDown = curRx - lastRx
-        lastTx = curTx
-        lastRx = curRx
+                    launch(Dispatchers.Main) {
+                        if (serverStartUp == 0L) {
+                            serverStartUp = up
+                            serverStartDown = down
+                        }
+                        val totalUp = up - serverStartUp
+                        val totalDown = down - serverStartDown
+                        binding.tvStatsTraffic.text = "\u2191 ${formatBytes(totalUp)}   \u2193 ${formatBytes(totalDown)}"
 
-        binding.tvStatsTraffic.text = "\u2191 ${formatBytes(totalUp)}   \u2193 ${formatBytes(totalDown)}"
-        binding.tvStatsSpeed.text = "\u25B2 ${formatBytes(speedUp)}/s   \u25BC ${formatBytes(speedDown)}/s"
+                        if (lastFetchTime > 0) {
+                            val dt = (now - lastFetchTime) / 1000.0
+                            if (dt > 0) {
+                                val speedUp = ((up - serverLastUp) / dt).toLong()
+                                val speedDown = ((down - serverLastDown) / dt).toLong()
+                                binding.tvStatsSpeed.text = "\u25B2 ${formatBytes(speedUp)}/s   \u25BC ${formatBytes(speedDown)}/s"
+                            }
+                        } else {
+                            binding.tvStatsSpeed.text = "\u25B2 0B/s   \u25BC 0B/s"
+                        }
+                        serverLastUp = up
+                        serverLastDown = down
+                        lastFetchTime = now
+                    }
+                } catch (_: Exception) {}
+            }
+        }
     }
 
     private fun runSpeedTest() {
