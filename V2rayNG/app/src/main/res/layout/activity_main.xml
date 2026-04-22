@@ -110,6 +110,18 @@
                             android:backgroundTint="#00D4AA"
                             android:textColor="#1A1A2E" />
 
+                        <TextView
+                            android:id="@+id/tv_speedtest_result"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center"
+                            android:layout_marginTop="6dp"
+                            android:textSize="15sp"
+                            android:textStyle="bold"
+                            android:textColor="#FFFFFF"
+                            android:fontFamily="monospace"
+                            android:visibility="gone" />
+
                     </LinearLayout>
 
 

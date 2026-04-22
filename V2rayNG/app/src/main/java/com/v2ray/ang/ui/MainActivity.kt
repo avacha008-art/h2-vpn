@@ -255,8 +255,73 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
     }
 
     private fun runSpeedTest() {
-        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://fast.com"))
-        startActivity(intent)
+        binding.tvSpeedtestResult.visibility = android.view.View.VISIBLE
+        binding.tvSpeedtestResult.text = "\u23F3 Ping..."
+        binding.btnSpeedtest.isEnabled = false
+        lifecycleScope.launch(Dispatchers.IO) {
+            val result = StringBuilder()
+
+            // 1. Ping
+            try {
+                val pings = mutableListOf<Long>()
+                repeat(3) {
+                    val s = System.currentTimeMillis()
+                    val sock = java.net.Socket()
+                    sock.connect(java.net.InetSocketAddress("www.google.com", 443), 5000)
+                    pings.add(System.currentTimeMillis() - s)
+                    sock.close()
+                    Thread.sleep(100)
+                }
+                result.append(String.format("Ping: %.0f ms", pings.average()))
+            } catch (_: Exception) {
+                result.append("Ping: \u2717")
+            }
+
+            launch(Dispatchers.Main) {
+                binding.tvSpeedtestResult.text = "$result | \u23F3 \u0417\u0430\u043C\u0435\u0440..."
+            }
+
+            // 2. Download speed - try multiple URLs
+            val urls = listOf(
+                "http://speedtest.tele2.net/1MB.zip",
+                "http://proof.ovh.net/files/1Mb.dat",
+                "http://ipv4.download.thinkbroadband.com/1MB.zip"
+            )
+            var speedDone = false
+            for (testUrl in urls) {
+                if (speedDone) break
+                try {
+                    val conn = java.net.URL(testUrl).openConnection() as java.net.HttpURLConnection
+                    conn.connectTimeout = 8000
+                    conn.readTimeout = 15000
+                    conn.instanceFollowRedirects = true
+                    conn.setRequestProperty("User-Agent", "Mozilla/5.0")
+                    val startMs = System.currentTimeMillis()
+                    val input = conn.inputStream
+                    val buf = ByteArray(16384)
+                    var total = 0L
+                    while (true) {
+                        val r = input.read(buf)
+                        if (r == -1) break
+                        total += r
+                    }
+                    input.close()
+                    conn.disconnect()
+                    val dur = (System.currentTimeMillis() - startMs) / 1000.0
+                    if (dur > 0 && total > 0) {
+                        val mbps = (total * 8.0) / (dur * 1000000)
+                        result.append(String.format(" | \u2193 %.1f \u041C\u0431\u0438\u0442/\u0441", mbps))
+                        speedDone = true
+                    }
+                } catch (_: Exception) {}
+            }
+            if (!speedDone) result.append(" | \u2193 \u2717")
+
+            launch(Dispatchers.Main) {
+                binding.tvSpeedtestResult.text = "\u2713 $result"
+                binding.btnSpeedtest.isEnabled = true
+            }
+        }
     }
 
     private fun formatBytes(bytes: Long): String {
