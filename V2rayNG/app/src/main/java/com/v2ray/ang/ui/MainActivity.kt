@@ -333,9 +333,9 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
 
             launch(Dispatchers.Main) { binding.tvSpeedtestResult.text = "$result | \u23F3 \u0417\u0430\u043C\u0435\u0440..." }
 
-            // Multi-thread download test (4 parallel streams)
+            // Multi-thread download test (8 parallel streams)
             try {
-                val threads = 4
+                val threads = 8
                 val url = "http://45.38.190.244/speedtest.bin"
                 val totalBytes = java.util.concurrent.atomic.AtomicLong(0)
                 val t0 = System.currentTimeMillis()
@@ -343,11 +343,11 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
                     kotlinx.coroutines.async(Dispatchers.IO) {
                         try {
                             val conn = java.net.URL(url).openConnection() as java.net.HttpURLConnection
-                            conn.connectTimeout = 8000
-                            conn.readTimeout = 20000
+                            conn.connectTimeout = 5000
+                            conn.readTimeout = 15000
                             conn.connect()
                             val input = conn.inputStream
-                            val buf = ByteArray(32768)
+                            val buf = ByteArray(65536)
                             while (true) {
                                 val r = input.read(buf)
                                 if (r == -1) break
@@ -361,7 +361,7 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
                 jobs.forEach { it.await() }
                 val dur = (System.currentTimeMillis() - t0) / 1000.0
                 val total = totalBytes.get()
-                if (dur > 0.1 && total > 50000) {
+                if (dur > 0.5 && total > 50000) {
                     result.append(String.format(" | \u2193 %.0f \u041C\u0431\u0438\u0442/\u0441", (total * 8.0) / (dur * 1000000)))
                 } else {
                     result.append(" | \u2193 \u2717")
