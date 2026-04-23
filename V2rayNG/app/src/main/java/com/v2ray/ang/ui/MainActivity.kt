@@ -340,7 +340,7 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
                 val totalBytes = java.util.concurrent.atomic.AtomicLong(0)
                 val t0 = System.currentTimeMillis()
                 val jobs = (1..threads).map {
-                    kotlinx.coroutines.async(Dispatchers.IO) {
+                    async(Dispatchers.IO) {
                         try {
                             val conn = java.net.URL(url).openConnection() as java.net.HttpURLConnection
                             conn.connectTimeout = 5000
