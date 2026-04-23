@@ -335,7 +335,7 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
 
             // Multi-thread download test (8 parallel streams)
             try {
-                val threads = 8
+                val threads = 6
                 val url = "http://45.38.190.244/speedtest.bin"
                 val totalBytes = java.util.concurrent.atomic.AtomicLong(0)
                 val t0 = System.currentTimeMillis()
