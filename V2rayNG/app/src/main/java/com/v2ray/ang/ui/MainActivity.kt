@@ -38,6 +38,7 @@ import com.v2ray.ang.util.LogUtil
 import com.v2ray.ang.util.Utils
 import com.v2ray.ang.viewmodel.MainViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -213,9 +214,22 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
             setTestState(getString(R.string.connection_connected))
             binding.layoutTest.isFocusable = true
             if (connectStartTime == 0L) {
-                connectStartTime = System.currentTimeMillis()
-                serverStartUp = 0L
-                serverStartDown = 0L
+                val prefs = getSharedPreferences("h2vpn_stats", 0)
+                val saved = prefs.getLong("connectStart", 0L)
+                if (saved > 0L) {
+                    connectStartTime = saved
+                    serverStartUp = prefs.getLong("serverStartUp", 0L)
+                    serverStartDown = prefs.getLong("serverStartDown", 0L)
+                    val savedTest = prefs.getString("speedtestResult", null)
+                    if (savedTest != null) {
+                        binding.tvSpeedtestResult.visibility = android.view.View.VISIBLE
+                        binding.tvSpeedtestResult.text = savedTest
+                    }
+                } else {
+                    connectStartTime = System.currentTimeMillis()
+                    serverStartUp = 0L
+                    serverStartDown = 0L
+                }
                 serverLastUp = 0L
                 serverLastDown = 0L
                 lastFetchTime = 0L
@@ -235,6 +249,7 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
             statsHandler.removeCallbacks(statsRunnable)
             connectStartTime = 0L
             binding.statsPanel.visibility = android.view.View.GONE
+            getSharedPreferences("h2vpn_stats", 0).edit().clear().apply()
         }
     }
 
@@ -246,7 +261,7 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
         val m = (elapsed % 3600) / 60
         val s = elapsed % 60
         val timeStr = if (h > 0) String.format("%d:%02d:%02d", h, m, s) else String.format("%02d:%02d", m, s)
-        binding.tvStatsTime.text = "v2.5 \u23F1$timeStr"
+        binding.tvStatsTime.text = "v2.6 \u23F1$timeStr"
 
         // Fetch server stats every 2 seconds
         fetchCount++
@@ -270,7 +285,7 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
                         }
                         val totalUp = up - serverStartUp
                         val totalDown = down - serverStartDown
-                        binding.tvStatsTraffic.text = "\u2191${formatBytes(totalUp)}  \u2193${formatBytes(totalDown)}"
+                        binding.tvStatsTraffic.text = "\u2191${formatBytes(totalDown)}  \u2193${formatBytes(totalUp)}"
 
                         if (lastFetchTime > 0 && up >= serverLastUp && down >= serverLastDown) {
                             val dt = (now - lastFetchTime) / 1000.0
@@ -283,7 +298,7 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
                                 if (speedDownHistory.size > 3) speedDownHistory.removeAt(0)
                                 val avgUp = speedUpHistory.average().toLong()
                                 val avgDown = speedDownHistory.average().toLong()
-                                binding.tvStatsSpeed.text = "\u2191${formatBytes(avgUp)}/s  \u2193${formatBytes(avgDown)}/s"
+                                binding.tvStatsSpeed.text = "\u2191${formatBytes(avgDown)}/s  \u2193${formatBytes(avgUp)}/s"
                             }
                         } else {
                             binding.tvStatsSpeed.text = "\u21910B/s  \u21930B/s"
@@ -318,26 +333,41 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
 
             launch(Dispatchers.Main) { binding.tvSpeedtestResult.text = "$result | \u23F3 \u0417\u0430\u043C\u0435\u0440..." }
 
-            val urls = listOf("http://45.38.190.244/speedtest.bin", "http://speedtest.tele2.net/1MB.zip", "http://proof.ovh.net/files/1Mb.dat")
-            var done = false
-            for (u in urls) {
-                if (done) break
-                try {
-                    val conn = java.net.URL(u).openConnection() as java.net.HttpURLConnection
-                    conn.connectTimeout = 8000; conn.readTimeout = 20000; conn.instanceFollowRedirects = true
-                    conn.connect()
-                    val t0 = System.currentTimeMillis()
-                    val input = conn.inputStream; val buf = ByteArray(32768); var total = 0L
-                    while (true) { val r = input.read(buf); if (r == -1) break; total += r }
-                    input.close(); conn.disconnect()
-                    val dur = (System.currentTimeMillis() - t0) / 1000.0
-                    if (dur > 0.1 && total > 50000) {
-                        result.append(String.format(" | \u2193 %.1f \u041C\u0431\u0438\u0442/\u0441", (total * 8.0) / (dur * 1000000)))
-                        done = true
+            // Multi-thread download test (4 parallel streams)
+            try {
+                val threads = 4
+                val url = "http://45.38.190.244/speedtest.bin"
+                val totalBytes = java.util.concurrent.atomic.AtomicLong(0)
+                val t0 = System.currentTimeMillis()
+                val jobs = (1..threads).map {
+                    kotlinx.coroutines.async(Dispatchers.IO) {
+                        try {
+                            val conn = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+                            conn.connectTimeout = 8000
+                            conn.readTimeout = 20000
+                            conn.connect()
+                            val input = conn.inputStream
+                            val buf = ByteArray(32768)
+                            while (true) {
+                                val r = input.read(buf)
+                                if (r == -1) break
+                                totalBytes.addAndGet(r.toLong())
+                            }
+                            input.close()
+                            conn.disconnect()
+                        } catch (_: Exception) {}
                     }
-                } catch (_: Exception) {}
-            }
-            if (!done) result.append(" | \u2193 \u2717")
+                }
+                jobs.forEach { it.await() }
+                val dur = (System.currentTimeMillis() - t0) / 1000.0
+                val total = totalBytes.get()
+                if (dur > 0.1 && total > 50000) {
+                    result.append(String.format(" | \u2193 %.0f \u041C\u0431\u0438\u0442/\u0441", (total * 8.0) / (dur * 1000000)))
+                } else {
+                    result.append(" | \u2193 \u2717")
+                }
+            } catch (_: Exception) { result.append(" | \u2193 \u2717") }
+
             launch(Dispatchers.Main) { binding.tvSpeedtestResult.text = "\u2713 $result"; binding.btnSpeedtest.isEnabled = true }
         }
     }
@@ -357,6 +387,14 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
 
     override fun onPause() {
         super.onPause()
+        if (connectStartTime > 0L) {
+            getSharedPreferences("h2vpn_stats", 0).edit()
+                .putLong("connectStart", connectStartTime)
+                .putLong("serverStartUp", serverStartUp)
+                .putLong("serverStartDown", serverStartDown)
+                .putString("speedtestResult", binding.tvSpeedtestResult.text?.toString())
+                .apply()
+        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
