@@ -333,22 +333,22 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
 
             launch(Dispatchers.Main) { binding.tvSpeedtestResult.text = "$result | \u23F3 \u0417\u0430\u043C\u0435\u0440..." }
 
-            // Multi-thread download test (8 parallel streams)
+            // Multi-thread streaming speed test (6 parallel, 5 seconds)
             try {
                 val threads = 6
-                val url = "http://45.38.190.244/speedtest.bin"
+                val testDurationMs = 5000L
                 val totalBytes = java.util.concurrent.atomic.AtomicLong(0)
                 val t0 = System.currentTimeMillis()
                 val jobs = (1..threads).map {
                     async(Dispatchers.IO) {
                         try {
-                            val conn = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+                            val conn = java.net.URL("http://45.38.190.244:8888/speedtest").openConnection() as java.net.HttpURLConnection
                             conn.connectTimeout = 5000
-                            conn.readTimeout = 15000
+                            conn.readTimeout = 6000
                             conn.connect()
                             val input = conn.inputStream
-                            val buf = ByteArray(65536)
-                            while (true) {
+                            val buf = ByteArray(131072)
+                            while (System.currentTimeMillis() - t0 < testDurationMs) {
                                 val r = input.read(buf)
                                 if (r == -1) break
                                 totalBytes.addAndGet(r.toLong())
