@@ -261,7 +261,7 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
         val m = (elapsed % 3600) / 60
         val s = elapsed % 60
         val timeStr = if (h > 0) String.format("%d:%02d:%02d", h, m, s) else String.format("%02d:%02d", m, s)
-        binding.tvStatsTime.text = "v2.6 \u23F1$timeStr"
+        binding.tvStatsTime.text = "v2.7 \u23F1$timeStr"
 
         // Fetch server stats every 2 seconds
         fetchCount++
