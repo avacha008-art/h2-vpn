@@ -323,16 +323,16 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
                             serverStartUp = up
                             serverStartDown = down
                         }
-                        val totalUp = down - serverStartDown    // down = client upload
-                        val totalDown = up - serverStartUp      // up = client download
+                        val totalUp = up - serverStartUp       // up = client upload
+                        val totalDown = down - serverStartDown  // down = client download
                         binding.tvUploadTotal.text = formatBytes(totalUp)
                         binding.tvDownloadTotal.text = formatBytes(totalDown)
 
                         if (lastFetchTime > 0 && up >= serverLastUp && down >= serverLastDown) {
                             val dt = (now - lastFetchTime) / 1000.0
                             if (dt > 0.5) {
-                                val sUp = ((down - serverLastDown) / dt).toLong()
-                                val sDown = ((up - serverLastUp) / dt).toLong()
+                                val sUp = ((up - serverLastUp) / dt).toLong()
+                                val sDown = ((down - serverLastDown) / dt).toLong()
                                 speedUpHistory.add(sUp)
                                 speedDownHistory.add(sDown)
                                 if (speedUpHistory.size > 3) speedUpHistory.removeAt(0)
