@@ -114,14 +114,10 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
             }
         })
 
-        binding.fab.setOnClickListener { handleFabAction() }
+        binding.fab.visibility = android.view.View.GONE
         binding.layoutTest.setOnClickListener { handleLayoutTestClick() }
         binding.btnSpeedtest.setOnClickListener { runSpeedTest() }
-        binding.btnDisconnect.setOnClickListener {
-            if (mainViewModel.isRunning.value == true) {
-                V2RayServiceManager.stopVService(this)
-            }
-        }
+        binding.btnDisconnect.setOnClickListener { handleFabAction() }
 
         setupGroupTab()
         setupViewModel()
@@ -208,16 +204,24 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
 
     private fun applyRunningState(isLoading: Boolean, isRunning: Boolean) {
         if (isLoading) {
-            binding.fab.setImageResource(R.drawable.ic_fab_check)
+            binding.btnDisconnect.isEnabled = false
+            binding.btnDisconnect.text = "..."
             return
         }
 
+        binding.statsPanel.visibility = android.view.View.VISIBLE
+        binding.btnDisconnect.isEnabled = true
+
         if (isRunning) {
-            binding.fab.setImageResource(R.drawable.ic_stop_24dp)
-            binding.fab.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(this, R.color.color_fab_active))
-            binding.fab.contentDescription = getString(R.string.action_stop_service)
             setTestState(getString(R.string.connection_connected))
             binding.layoutTest.isFocusable = true
+            binding.btnDisconnect.text = "\u041E\u0422\u041A\u041B\u042E\u0427\u0418\u0422\u042C\u0421\u042F"
+            binding.btnDisconnect.backgroundTintList = ColorStateList.valueOf(android.graphics.Color.parseColor("#EB5757"))
+            binding.btnDisconnect.setTextColor(android.graphics.Color.parseColor("#FFFFFF"))
+            binding.tvStatusLabel.text = "\u041F\u041E\u0414\u041A\u041B\u042E\u0427\u0415\u041D\u041E"
+            binding.tvStatusLabel.setTextColor(android.graphics.Color.parseColor("#00E5A0"))
+            binding.pulseDot.setBackgroundResource(R.drawable.pulse_dot)
+            binding.tvServerAddr.text = "45.38.190.244 : 2443 \u00B7 VLESS \u00B7 v3.1"
             if (connectStartTime == 0L) {
                 val prefs = getSharedPreferences("h2vpn_stats", 0)
                 val saved = prefs.getLong("connectStart", 0L)
@@ -241,18 +245,25 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
                 speedUpHistory.clear()
                 speedDownHistory.clear()
             }
-            binding.statsPanel.visibility = android.view.View.VISIBLE
             statsHandler.removeCallbacks(statsRunnable)
             statsHandler.post(statsRunnable)
         } else {
-            binding.fab.setImageResource(R.drawable.ic_play_24dp)
-            binding.fab.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(this, R.color.color_fab_inactive))
-            binding.fab.contentDescription = getString(R.string.tasker_start_service)
             setTestState(getString(R.string.connection_not_connected))
             binding.layoutTest.isFocusable = false
+            binding.btnDisconnect.text = "\u041F\u041E\u0414\u041A\u041B\u042E\u0427\u0418\u0422\u042C\u0421\u042F"
+            binding.btnDisconnect.backgroundTintList = ColorStateList.valueOf(android.graphics.Color.parseColor("#00E5A0"))
+            binding.btnDisconnect.setTextColor(android.graphics.Color.parseColor("#0A0E1A"))
+            binding.tvStatusLabel.text = "\u041E\u0422\u041A\u041B\u042E\u0427\u0415\u041D\u041E"
+            binding.tvStatusLabel.setTextColor(android.graphics.Color.parseColor("#5A6377"))
+            binding.pulseDot.setBackgroundColor(android.graphics.Color.parseColor("#5A6377"))
+            binding.tvServerAddr.text = "45.38.190.244 : 2443 \u00B7 VLESS \u00B7 v3.1"
+            binding.tvStatsTime.text = "00:00"
+            binding.tvUploadTotal.text = "0 \u0411"
+            binding.tvDownloadTotal.text = "0 \u0411"
+            binding.tvUploadSpeed.text = "0 \u0411/\u0441"
+            binding.tvDownloadSpeed.text = "0 \u0411/\u0441"
             statsHandler.removeCallbacks(statsRunnable)
             connectStartTime = 0L
-            binding.statsPanel.visibility = android.view.View.GONE
             getSharedPreferences("h2vpn_stats", 0).edit().clear().apply()
         }
     }
@@ -266,6 +277,17 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
         val s = elapsed % 60
         val timeStr = if (h > 0) String.format("%d:%02d:%02d", h, m, s) else String.format("%02d:%02d", m, s)
         binding.tvStatsTime.text = timeStr
+
+        // Save to SharedPreferences every 10 seconds
+        if (elapsed % 10 == 0L) {
+            getSharedPreferences("h2vpn_stats", 0).edit()
+                .putLong("connectStart", connectStartTime)
+                .putLong("serverStartUp", serverStartUp)
+                .putLong("serverStartDown", serverStartDown)
+                .putString("pingResult", binding.tvPingVal.text?.toString())
+                .putString("speedResult", binding.tvSpeedVal.text?.toString())
+                .apply()
+        }
 
         // Fetch server stats every 2 seconds
         fetchCount++
