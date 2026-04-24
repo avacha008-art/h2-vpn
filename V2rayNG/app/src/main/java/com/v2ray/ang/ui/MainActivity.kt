@@ -236,7 +236,7 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
             binding.tvStatusLabel.text = "\u041F\u041E\u0414\u041A\u041B\u042E\u0427\u0415\u041D\u041E"
             binding.tvStatusLabel.setTextColor(android.graphics.Color.parseColor("#00E5A0"))
             binding.pulseDot.setBackgroundResource(R.drawable.pulse_dot)
-            binding.tvServerAddr.text = "45.38.190.244 : 2443 \u00B7 VLESS \u00B7 v3.2"
+            binding.tvServerAddr.text = "45.38.190.244 : 2443 \u00B7 VLESS \u00B7 v3.3"
             if (connectStartTime == 0L) {
                 val prefs = getSharedPreferences("h2vpn_stats", 0)
                 val saved = prefs.getLong("connectStart", 0L)
@@ -262,6 +262,7 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
             }
             statsHandler.removeCallbacks(statsRunnable)
             statsHandler.post(statsRunnable)
+            checkVpnIp()
         } else {
             setTestState(getString(R.string.connection_not_connected))
             binding.layoutTest.isFocusable = false
@@ -271,7 +272,7 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
             binding.tvStatusLabel.text = "\u041E\u0422\u041A\u041B\u042E\u0427\u0415\u041D\u041E"
             binding.tvStatusLabel.setTextColor(android.graphics.Color.parseColor("#5A6377"))
             binding.pulseDot.setBackgroundColor(android.graphics.Color.parseColor("#5A6377"))
-            binding.tvServerAddr.text = "45.38.190.244 : 2443 \u00B7 VLESS \u00B7 v3.2"
+            binding.tvServerAddr.text = "45.38.190.244 : 2443 \u00B7 VLESS \u00B7 v3.3"
             binding.tvStatsTime.text = "00:00"
             binding.tvUploadTotal.text = "0 \u0411"
             binding.tvDownloadTotal.text = "0 \u0411"
@@ -319,6 +320,10 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
                     val now = System.currentTimeMillis()
 
                     launch(Dispatchers.Main) {
+                        fetchFailCount = 0
+                        binding.pulseDot.setBackgroundResource(R.drawable.pulse_dot)
+                        binding.tvStatusLabel.text = "\u041F\u041E\u0414\u041A\u041B\u042E\u0427\u0415\u041D\u041E"
+                        binding.tvStatusLabel.setTextColor(android.graphics.Color.parseColor("#00E5A0"))
                         if (serverStartUp == 0L) {
                             serverStartUp = up
                             serverStartDown = down
@@ -350,9 +355,28 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
                         serverLastDown = down
                         lastFetchTime = now
                     }
-                } catch (_: Exception) {}
+                } catch (_: Exception) {
+                    launch(Dispatchers.Main) {
+                        fetchFailCount++
+                        if (fetchFailCount >= 3) {
+                            binding.pulseDot.setBackgroundColor(android.graphics.Color.parseColor("#FF6B6B"))
+                            binding.tvStatusLabel.text = "\u041D\u0415\u0422 \u0421\u0412\u042F\u0417\u0418"
+                            binding.tvStatusLabel.setTextColor(android.graphics.Color.parseColor("#FF6B6B"))
+                        }
+                    }
+                }
             }
         }
+    }
+
+    private var fetchFailCount = 0
+
+    private fun checkVpnIp() {
+        // Initial check - will be updated by updateStats fetch results
+        binding.tvStatusLabel.text = "\u041F\u041E\u0414\u041A\u041B\u042E\u0427\u0415\u041D\u041E"
+        binding.tvStatusLabel.setTextColor(android.graphics.Color.parseColor("#00E5A0"))
+        binding.pulseDot.setBackgroundResource(R.drawable.pulse_dot)
+        fetchFailCount = 0
     }
 
     private fun runSpeedTest() {
