@@ -120,6 +120,14 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
         binding.btnDisconnect.setOnClickListener {
             if (mainViewModel.isRunning.value == true) {
                 connectStartTime = 0L
+                serverStartUp = 0L
+                serverStartDown = 0L
+                serverLastUp = 0L
+                serverLastDown = 0L
+                lastFetchTime = 0L
+                fetchCount = 0
+                speedUpHistory.clear()
+                speedDownHistory.clear()
                 statsHandler.removeCallbacks(statsRunnable)
                 getSharedPreferences("h2vpn_stats", 0).edit().clear().apply()
             }
