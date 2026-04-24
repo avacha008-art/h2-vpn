@@ -221,7 +221,7 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
             binding.tvStatusLabel.text = "\u041F\u041E\u0414\u041A\u041B\u042E\u0427\u0415\u041D\u041E"
             binding.tvStatusLabel.setTextColor(android.graphics.Color.parseColor("#00E5A0"))
             binding.pulseDot.setBackgroundResource(R.drawable.pulse_dot)
-            binding.tvServerAddr.text = "45.38.190.244 : 2443 \u00B7 VLESS \u00B7 v3.1"
+            binding.tvServerAddr.text = "45.38.190.244 : 2443 \u00B7 VLESS \u00B7 v3.2"
             if (connectStartTime == 0L) {
                 val prefs = getSharedPreferences("h2vpn_stats", 0)
                 val saved = prefs.getLong("connectStart", 0L)
@@ -256,7 +256,7 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
             binding.tvStatusLabel.text = "\u041E\u0422\u041A\u041B\u042E\u0427\u0415\u041D\u041E"
             binding.tvStatusLabel.setTextColor(android.graphics.Color.parseColor("#5A6377"))
             binding.pulseDot.setBackgroundColor(android.graphics.Color.parseColor("#5A6377"))
-            binding.tvServerAddr.text = "45.38.190.244 : 2443 \u00B7 VLESS \u00B7 v3.1"
+            binding.tvServerAddr.text = "45.38.190.244 : 2443 \u00B7 VLESS \u00B7 v3.2"
             binding.tvStatsTime.text = "00:00"
             binding.tvUploadTotal.text = "0 \u0411"
             binding.tvDownloadTotal.text = "0 \u0411"
@@ -279,7 +279,7 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
         binding.tvStatsTime.text = timeStr
 
         // Save to SharedPreferences every 10 seconds
-        if (elapsed % 10 == 0L) {
+        if (elapsed % 3 == 0L) {
             getSharedPreferences("h2vpn_stats", 0).edit()
                 .putLong("connectStart", connectStartTime)
                 .putLong("serverStartUp", serverStartUp)
