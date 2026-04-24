@@ -117,7 +117,12 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
         binding.fab.visibility = android.view.View.GONE
         binding.layoutTest.setOnClickListener { handleLayoutTestClick() }
         binding.btnSpeedtest.setOnClickListener { runSpeedTest() }
-        binding.btnDisconnect.setOnClickListener { handleFabAction() }
+        binding.btnDisconnect.setOnClickListener {
+            if (mainViewModel.isRunning.value == true) {
+                getSharedPreferences("h2vpn_stats", 0).edit().clear().apply()
+            }
+            handleFabAction()
+        }
 
         setupGroupTab()
         setupViewModel()
@@ -264,7 +269,6 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
             binding.tvDownloadSpeed.text = "0 \u0411/\u0441"
             statsHandler.removeCallbacks(statsRunnable)
             connectStartTime = 0L
-            getSharedPreferences("h2vpn_stats", 0).edit().clear().apply()
         }
     }
 
