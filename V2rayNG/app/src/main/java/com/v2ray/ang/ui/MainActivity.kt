@@ -119,6 +119,8 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
         binding.btnSpeedtest.setOnClickListener { runSpeedTest() }
         binding.btnDisconnect.setOnClickListener {
             if (mainViewModel.isRunning.value == true) {
+                connectStartTime = 0L
+                statsHandler.removeCallbacks(statsRunnable)
                 getSharedPreferences("h2vpn_stats", 0).edit().clear().apply()
             }
             handleFabAction()
