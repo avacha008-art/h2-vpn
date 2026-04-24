@@ -56,81 +56,303 @@
                         android:id="@+id/stats_panel"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:background="#1A1A2E"
+                        android:background="#0A0E1A"
                         android:orientation="vertical"
-                        android:gravity="center_horizontal"
-                        android:paddingTop="14dp"
-                        android:paddingBottom="14dp"
-                        android:paddingStart="16dp"
-                        android:paddingEnd="16dp"
                         android:visibility="gone">
 
-                        <TextView
-                            android:id="@+id/tv_stats_time"
-                            android:layout_width="wrap_content"
+                        <!-- STATUS CARD -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_gravity="center"
-                            android:textSize="22sp"
-                            android:textStyle="bold"
-                            android:textColor="#00D4AA"
-                            android:fontFamily="monospace" />
+                            android:layout_marginStart="12dp"
+                            android:layout_marginEnd="12dp"
+                            android:layout_marginTop="8dp"
+                            android:background="@drawable/card_bg"
+                            android:orientation="vertical"
+                            android:padding="20dp">
 
-                        <TextView
-                            android:id="@+id/tv_stats_version"
-                            android:layout_width="wrap_content"
+                            <!-- Status row: dot + label -->
+                            <LinearLayout
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:gravity="center_vertical"
+                                android:orientation="horizontal">
+
+                                <View
+                                    android:id="@+id/pulse_dot"
+                                    android:layout_width="8dp"
+                                    android:layout_height="8dp"
+                                    android:background="@drawable/pulse_dot" />
+
+                                <TextView
+                                    android:id="@+id/tv_status_label"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginStart="8dp"
+                                    android:text="ПОДКЛЮЧЕНО"
+                                    android:textColor="#00E5A0"
+                                    android:textSize="11sp"
+                                    android:textStyle="bold"
+                                    android:letterSpacing="0.14"
+                                    android:fontFamily="monospace" />
+                            </LinearLayout>
+
+                            <!-- Server info -->
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="14dp"
+                                android:gravity="center_vertical"
+                                android:orientation="horizontal">
+
+                                <TextView
+                                    android:layout_width="46dp"
+                                    android:layout_height="46dp"
+                                    android:background="@drawable/flag_bg"
+                                    android:gravity="center"
+                                    android:text="🇩🇪"
+                                    android:textSize="24sp" />
+
+                                <LinearLayout
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginStart="12dp"
+                                    android:orientation="vertical">
+
+                                    <TextView
+                                        android:id="@+id/tv_server_name"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="Германия"
+                                        android:textColor="#FFFFFF"
+                                        android:textSize="20sp"
+                                        android:textStyle="bold" />
+
+                                    <TextView
+                                        android:id="@+id/tv_server_addr"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:layout_marginTop="2dp"
+                                        android:text="45.38.190.244 : 2443 · VLESS"
+                                        android:textColor="#8993A4"
+                                        android:textSize="11sp"
+                                        android:fontFamily="monospace" />
+                                </LinearLayout>
+                            </LinearLayout>
+
+                            <!-- Uptime -->
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="16dp"
+                                android:layout_marginBottom="16dp"
+                                android:gravity="center_vertical"
+                                android:orientation="horizontal">
+
+                                <TextView
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:text="В СЕТИ"
+                                    android:textColor="#5A6377"
+                                    android:textSize="11sp"
+                                    android:textStyle="bold"
+                                    android:letterSpacing="0.14" />
+
+                                <TextView
+                                    android:id="@+id/tv_stats_time"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:textColor="#FFFFFF"
+                                    android:textSize="22sp"
+                                    android:fontFamily="monospace" />
+                            </LinearLayout>
+
+                            <View
+                                android:layout_width="match_parent"
+                                android:layout_height="1dp"
+                                android:background="#1F2738" />
+
+                            <!-- Disconnect button -->
+                            <Button
+                                android:id="@+id/btn_disconnect"
+                                android:layout_width="match_parent"
+                                android:layout_height="48dp"
+                                android:layout_marginTop="16dp"
+                                android:background="@drawable/btn_disconnect_bg"
+                                android:text="ОТКЛЮЧИТЬСЯ"
+                                android:textColor="#FFFFFF"
+                                android:textSize="14sp"
+                                android:textStyle="bold"
+                                android:letterSpacing="0.06" />
+
+                        </LinearLayout>
+
+                        <!-- STAT CARDS GRID -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_gravity="center"
-                            android:layout_marginTop="2dp"
-                            android:textSize="10sp"
-                            android:textColor="#556677"
-                            android:text="H2 VPN v2.5" />
+                            android:layout_marginStart="12dp"
+                            android:layout_marginEnd="12dp"
+                            android:layout_marginTop="10dp"
+                            android:orientation="horizontal">
 
-                        <TextView
-                            android:id="@+id/tv_stats_traffic"
-                            android:layout_width="wrap_content"
+                            <!-- Upload card -->
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:layout_marginEnd="5dp"
+                                android:background="@drawable/stat_card_bg"
+                                android:orientation="vertical"
+                                android:padding="14dp">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="↑ ОТПРАВЛЕНО"
+                                    android:textColor="#4ECDC4"
+                                    android:textSize="10sp"
+                                    android:textStyle="bold"
+                                    android:letterSpacing="0.1" />
+
+                                <TextView
+                                    android:id="@+id/tv_upload_total"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="6dp"
+                                    android:text="0 Б"
+                                    android:textColor="#FFFFFF"
+                                    android:textSize="20sp"
+                                    android:textStyle="bold"
+                                    android:fontFamily="monospace" />
+
+                                <TextView
+                                    android:id="@+id/tv_upload_speed"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="2dp"
+                                    android:text="0 Б/с"
+                                    android:textColor="#8993A4"
+                                    android:textSize="12sp"
+                                    android:fontFamily="monospace" />
+                            </LinearLayout>
+
+                            <!-- Download card -->
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:layout_marginStart="5dp"
+                                android:background="@drawable/stat_card_bg"
+                                android:orientation="vertical"
+                                android:padding="14dp">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="↓ ПОЛУЧЕНО"
+                                    android:textColor="#6EE7DF"
+                                    android:textSize="10sp"
+                                    android:textStyle="bold"
+                                    android:letterSpacing="0.1" />
+
+                                <TextView
+                                    android:id="@+id/tv_download_total"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="6dp"
+                                    android:text="0 Б"
+                                    android:textColor="#FFFFFF"
+                                    android:textSize="20sp"
+                                    android:textStyle="bold"
+                                    android:fontFamily="monospace" />
+
+                                <TextView
+                                    android:id="@+id/tv_download_speed"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="2dp"
+                                    android:text="0 Б/с"
+                                    android:textColor="#8993A4"
+                                    android:textSize="12sp"
+                                    android:fontFamily="monospace" />
+                            </LinearLayout>
+                        </LinearLayout>
+
+                        <!-- PING + SPEED ROW -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_gravity="center"
-                            android:layout_marginTop="6dp"
-                            android:textSize="16sp"
-                            android:textStyle="bold"
-                            android:textColor="#00D4AA"
-                            android:fontFamily="monospace" />
+                            android:layout_marginStart="12dp"
+                            android:layout_marginEnd="12dp"
+                            android:layout_marginTop="10dp"
+                            android:background="@drawable/ping_row_bg"
+                            android:gravity="center"
+                            android:orientation="horizontal"
+                            android:padding="14dp">
 
-                        <TextView
-                            android:id="@+id/tv_stats_speed"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_gravity="center"
-                            android:layout_marginTop="4dp"
-                            android:textSize="16sp"
-                            android:textStyle="bold"
-                            android:textColor="#00D4AA"
-                            android:fontFamily="monospace" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="PING  "
+                                android:textColor="#5A6377"
+                                android:textSize="11sp"
+                                android:textStyle="bold" />
 
+                            <TextView
+                                android:id="@+id/tv_ping_val"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="—"
+                                android:textColor="#FFFFFF"
+                                android:textSize="16sp"
+                                android:textStyle="bold"
+                                android:fontFamily="monospace" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="20dp"
+                                android:text="│"
+                                android:textColor="#1F2738"
+                                android:textSize="16sp" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="20dp"
+                                android:text="СКОРОСТЬ  "
+                                android:textColor="#5A6377"
+                                android:textSize="11sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/tv_speed_val"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="—"
+                                android:textColor="#FFFFFF"
+                                android:textSize="16sp"
+                                android:textStyle="bold"
+                                android:fontFamily="monospace" />
+                        </LinearLayout>
+
+                        <!-- TEST BUTTON -->
                         <Button
                             android:id="@+id/btn_speedtest"
-                            android:layout_width="wrap_content"
-                            android:layout_height="36dp"
-                            android:layout_gravity="center"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:layout_marginStart="12dp"
+                            android:layout_marginEnd="12dp"
                             android:layout_marginTop="10dp"
-                            android:paddingStart="24dp"
-                            android:paddingEnd="24dp"
-                            android:text="Тест скорости"
-                            android:textSize="13sp"
-                            android:backgroundTint="#00D4AA"
-                            android:textColor="#1A1A2E" />
-
-                        <TextView
-                            android:id="@+id/tv_speedtest_result"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_gravity="center"
-                            android:layout_marginTop="6dp"
-                            android:textSize="15sp"
+                            android:layout_marginBottom="10dp"
+                            android:background="@drawable/btn_test_bg"
+                            android:text="ТЕСТ СКОРОСТИ"
+                            android:textColor="#6EE7DF"
+                            android:textSize="14sp"
                             android:textStyle="bold"
-                            android:textColor="#FFFFFF"
-                            android:fontFamily="monospace"
-                            android:visibility="gone" />
+                            android:letterSpacing="0.06" />
 
                     </LinearLayout>
 

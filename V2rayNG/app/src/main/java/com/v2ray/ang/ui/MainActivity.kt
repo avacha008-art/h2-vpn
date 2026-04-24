@@ -117,6 +117,11 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
         binding.fab.setOnClickListener { handleFabAction() }
         binding.layoutTest.setOnClickListener { handleLayoutTestClick() }
         binding.btnSpeedtest.setOnClickListener { runSpeedTest() }
+        binding.btnDisconnect.setOnClickListener {
+            if (mainViewModel.isRunning.value == true) {
+                V2RayServiceManager.stopVService(this)
+            }
+        }
 
         setupGroupTab()
         setupViewModel()
@@ -220,11 +225,10 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
                     connectStartTime = saved
                     serverStartUp = prefs.getLong("serverStartUp", 0L)
                     serverStartDown = prefs.getLong("serverStartDown", 0L)
-                    val savedTest = prefs.getString("speedtestResult", null)
-                    if (savedTest != null) {
-                        binding.tvSpeedtestResult.visibility = android.view.View.VISIBLE
-                        binding.tvSpeedtestResult.text = savedTest
-                    }
+                    val savedPing = prefs.getString("pingResult", null)
+                    val savedSpeed = prefs.getString("speedResult", null)
+                    if (savedPing != null) binding.tvPingVal.text = savedPing
+                    if (savedSpeed != null) binding.tvSpeedVal.text = savedSpeed
                 } else {
                     connectStartTime = System.currentTimeMillis()
                     serverStartUp = 0L
@@ -261,7 +265,7 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
         val m = (elapsed % 3600) / 60
         val s = elapsed % 60
         val timeStr = if (h > 0) String.format("%d:%02d:%02d", h, m, s) else String.format("%02d:%02d", m, s)
-        binding.tvStatsTime.text = "v2.7 \u23F1$timeStr"
+        binding.tvStatsTime.text = timeStr
 
         // Fetch server stats every 2 seconds
         fetchCount++
@@ -283,25 +287,28 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
                             serverStartUp = up
                             serverStartDown = down
                         }
-                        val totalUp = up - serverStartUp
-                        val totalDown = down - serverStartDown
-                        binding.tvStatsTraffic.text = "\u2191${formatBytes(totalDown)}  \u2193${formatBytes(totalUp)}"
+                        val totalUp = down - serverStartDown  // server down = client upload
+                        val totalDown = up - serverStartUp     // server up = client download
+                        binding.tvUploadTotal.text = formatBytes(totalUp)
+                        binding.tvDownloadTotal.text = formatBytes(totalDown)
 
                         if (lastFetchTime > 0 && up >= serverLastUp && down >= serverLastDown) {
                             val dt = (now - lastFetchTime) / 1000.0
                             if (dt > 0.5) {
-                                val sUp = ((up - serverLastUp) / dt).toLong()
-                                val sDown = ((down - serverLastDown) / dt).toLong()
+                                val sUp = ((down - serverLastDown) / dt).toLong()
+                                val sDown = ((up - serverLastUp) / dt).toLong()
                                 speedUpHistory.add(sUp)
                                 speedDownHistory.add(sDown)
                                 if (speedUpHistory.size > 3) speedUpHistory.removeAt(0)
                                 if (speedDownHistory.size > 3) speedDownHistory.removeAt(0)
                                 val avgUp = speedUpHistory.average().toLong()
                                 val avgDown = speedDownHistory.average().toLong()
-                                binding.tvStatsSpeed.text = "\u2191${formatBytes(avgDown)}/s  \u2193${formatBytes(avgUp)}/s"
+                                binding.tvUploadSpeed.text = "${formatBytes(avgUp)}/\u0441"
+                                binding.tvDownloadSpeed.text = "${formatBytes(avgDown)}/\u0441"
                             }
                         } else {
-                            binding.tvStatsSpeed.text = "\u21910B/s  \u21930B/s"
+                            binding.tvUploadSpeed.text = "0B/\u0441"
+                            binding.tvDownloadSpeed.text = "0B/\u0441"
                         }
                         serverLastUp = up
                         serverLastDown = down
@@ -313,11 +320,12 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
     }
 
     private fun runSpeedTest() {
-        binding.tvSpeedtestResult.visibility = android.view.View.VISIBLE
-        binding.tvSpeedtestResult.text = "\u23F3 Ping..."
+        binding.tvPingVal.text = "\u23F3..."
+        binding.tvSpeedVal.text = "\u23F3..."
         binding.btnSpeedtest.isEnabled = false
         lifecycleScope.launch(Dispatchers.IO) {
-            val result = StringBuilder()
+            // 1. Ping
+            var pingResult = "\u2717"
             try {
                 val pings = mutableListOf<Long>()
                 repeat(3) {
@@ -328,12 +336,13 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
                     sock.close()
                     Thread.sleep(100)
                 }
-                result.append(String.format("Ping: %.0f ms", pings.average()))
-            } catch (_: Exception) { result.append("Ping: \u2717") }
+                pingResult = String.format("%.0f \u043C\u0441", pings.average())
+            } catch (_: Exception) {}
 
-            launch(Dispatchers.Main) { binding.tvSpeedtestResult.text = "$result | \u23F3 \u0417\u0430\u043C\u0435\u0440..." }
+            launch(Dispatchers.Main) { binding.tvPingVal.text = pingResult }
 
-            // Multi-thread streaming speed test (6 parallel, 5 seconds)
+            // 2. Speed - streaming test
+            var speedResult = "\u2717"
             try {
                 val threads = 6
                 val testDurationMs = 5000L
@@ -362,13 +371,19 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
                 val dur = (System.currentTimeMillis() - t0) / 1000.0
                 val total = totalBytes.get()
                 if (dur > 0.5 && total > 50000) {
-                    result.append(String.format(" | \u2193 %.0f \u041C\u0431\u0438\u0442/\u0441", (total * 8.0) / (dur * 1000000)))
-                } else {
-                    result.append(" | \u2193 \u2717")
+                    speedResult = String.format("%.0f \u041C\u0431/\u0441", (total * 8.0) / (dur * 1000000))
                 }
-            } catch (_: Exception) { result.append(" | \u2193 \u2717") }
+            } catch (_: Exception) {}
 
-            launch(Dispatchers.Main) { binding.tvSpeedtestResult.text = "\u2713 $result"; binding.btnSpeedtest.isEnabled = true }
+            launch(Dispatchers.Main) {
+                binding.tvSpeedVal.text = speedResult
+                binding.btnSpeedtest.isEnabled = true
+                // Save results
+                getSharedPreferences("h2vpn_stats", 0).edit()
+                    .putString("pingResult", pingResult)
+                    .putString("speedResult", speedResult)
+                    .apply()
+            }
         }
     }
 
@@ -392,7 +407,8 @@ class MainActivity : HelperBaseActivity(), NavigationView.OnNavigationItemSelect
                 .putLong("connectStart", connectStartTime)
                 .putLong("serverStartUp", serverStartUp)
                 .putLong("serverStartDown", serverStartDown)
-                .putString("speedtestResult", binding.tvSpeedtestResult.text?.toString())
+                .putString("pingResult", binding.tvPingVal.text?.toString())
+                .putString("speedResult", binding.tvSpeedVal.text?.toString())
                 .apply()
         }
     }
