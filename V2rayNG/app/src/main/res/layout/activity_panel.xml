@@ -40,22 +40,22 @@
                     </LinearLayout>
                     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:gravity="center_vertical" android:orientation="horizontal">
                         <TextView android:layout_width="42dp" android:layout_height="wrap_content" android:text="CPU" android:textColor="#8993A4" android:textSize="11sp" android:textStyle="bold" />
-                        <FrameLayout android:layout_width="0dp" android:layout_height="6dp" android:layout_weight="1" android:layout_marginStart="8dp" android:layout_marginEnd="8dp" android:background="#1F2738">
-                            <View android:id="@+id/bar_cpu" android:layout_width="0dp" android:layout_height="match_parent" android:background="#4ECDC4" />
+                        <FrameLayout android:layout_width="0dp" android:layout_height="8dp" android:layout_weight="1" android:layout_marginStart="8dp" android:layout_marginEnd="8dp" android:background="@drawable/bar_bg">
+                            <View android:id="@+id/bar_cpu" android:layout_width="0dp" android:layout_height="match_parent" android:background="@drawable/bar_cpu" />
                         </FrameLayout>
                         <TextView android:id="@+id/tv_cpu" android:layout_width="40dp" android:layout_height="wrap_content" android:gravity="end" android:textColor="#FFFFFF" android:textSize="12sp" android:textStyle="bold" android:fontFamily="monospace" />
                     </LinearLayout>
                     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:gravity="center_vertical" android:orientation="horizontal">
                         <TextView android:layout_width="42dp" android:layout_height="wrap_content" android:text="RAM" android:textColor="#8993A4" android:textSize="11sp" android:textStyle="bold" />
-                        <FrameLayout android:layout_width="0dp" android:layout_height="6dp" android:layout_weight="1" android:layout_marginStart="8dp" android:layout_marginEnd="8dp" android:background="#1F2738">
-                            <View android:id="@+id/bar_ram" android:layout_width="0dp" android:layout_height="match_parent" android:background="#6EE7DF" />
+                        <FrameLayout android:layout_width="0dp" android:layout_height="8dp" android:layout_weight="1" android:layout_marginStart="8dp" android:layout_marginEnd="8dp" android:background="@drawable/bar_bg">
+                            <View android:id="@+id/bar_ram" android:layout_width="0dp" android:layout_height="match_parent" android:background="@drawable/bar_ram" />
                         </FrameLayout>
                         <TextView android:id="@+id/tv_ram" android:layout_width="wrap_content" android:layout_height="wrap_content" android:gravity="end" android:textColor="#FFFFFF" android:textSize="12sp" android:textStyle="bold" android:fontFamily="monospace" />
                     </LinearLayout>
                     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:gravity="center_vertical" android:orientation="horizontal">
                         <TextView android:layout_width="42dp" android:layout_height="wrap_content" android:text="Диск" android:textColor="#8993A4" android:textSize="11sp" android:textStyle="bold" />
-                        <FrameLayout android:layout_width="0dp" android:layout_height="6dp" android:layout_weight="1" android:layout_marginStart="8dp" android:layout_marginEnd="8dp" android:background="#1F2738">
-                            <View android:id="@+id/bar_disk" android:layout_width="0dp" android:layout_height="match_parent" android:background="#4ECDC4" />
+                        <FrameLayout android:layout_width="0dp" android:layout_height="8dp" android:layout_weight="1" android:layout_marginStart="8dp" android:layout_marginEnd="8dp" android:background="@drawable/bar_bg">
+                            <View android:id="@+id/bar_disk" android:layout_width="0dp" android:layout_height="match_parent" android:background="@drawable/bar_cpu" />
                         </FrameLayout>
                         <TextView android:id="@+id/tv_disk" android:layout_width="wrap_content" android:layout_height="wrap_content" android:gravity="end" android:textColor="#FFFFFF" android:textSize="12sp" android:textStyle="bold" android:fontFamily="monospace" />
                     </LinearLayout>

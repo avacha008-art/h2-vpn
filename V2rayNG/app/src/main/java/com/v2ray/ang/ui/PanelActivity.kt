@@ -267,27 +267,27 @@ class PanelActivity : BaseActivity() {
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dpToPx(6), 0, dpToPx(6))
+            setPadding(0, dpToPx(10), 0, dpToPx(10))
         }
         val dot = View(this).apply {
-            layoutParams = LinearLayout.LayoutParams(dpToPx(7), dpToPx(7)).apply { marginEnd = dpToPx(10) }
-            setBackgroundColor(if (state == "active") Color.parseColor("#00E5A0") else Color.parseColor("#FF6B6B"))
+            layoutParams = LinearLayout.LayoutParams(dpToPx(10), dpToPx(10)).apply { marginEnd = dpToPx(12) }
+            setBackgroundResource(if (state == "active") R.drawable.dot_green else R.drawable.dot_red)
         }
         val tvName = TextView(this).apply {
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            text = name; textSize = 13f; setTextColor(Color.WHITE)
+            text = name; textSize = 14f; setTextColor(Color.WHITE)
         }
         val tvState = TextView(this).apply {
-            text = state; textSize = 11f; typeface = Typeface.MONOSPACE
+            text = state; textSize = 12f; typeface = Typeface.MONOSPACE
             setTextColor(if (state == "active") Color.parseColor("#00E5A0") else Color.parseColor("#FF6B6B"))
         }
         row.addView(dot); row.addView(tvName); row.addView(tvState)
 
         if (restartableServices.containsKey(svcKey)) {
             val btn = TextView(this).apply {
-                text = "\u21BB"; textSize = 16f
-                setTextColor(Color.parseColor("#5A6377"))
-                setPadding(dpToPx(10), 0, 0, 0)
+                text = "\u21BB"; textSize = 20f
+                setTextColor(Color.parseColor("#4ECDC4"))
+                setPadding(dpToPx(14), 0, 0, 0)
                 setOnClickListener { confirmRestart(name, restartableServices[svcKey]!!) }
             }
             row.addView(btn)
@@ -337,18 +337,18 @@ class PanelActivity : BaseActivity() {
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dpToPx(7), 0, dpToPx(7))
+            setPadding(0, dpToPx(10), 0, dpToPx(10))
         }
         val dot = View(this).apply {
-            layoutParams = LinearLayout.LayoutParams(dpToPx(8), dpToPx(8)).apply { marginEnd = dpToPx(10) }
-            setBackgroundColor(if (online) Color.parseColor("#00E5A0") else Color.parseColor("#5A6377"))
+            layoutParams = LinearLayout.LayoutParams(dpToPx(10), dpToPx(10)).apply { marginEnd = dpToPx(12) }
+            setBackgroundResource(if (online) R.drawable.dot_green else R.drawable.dot_gray)
         }
         val tvName = TextView(this).apply {
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            text = name; textSize = 13f; setTextColor(Color.WHITE); typeface = Typeface.DEFAULT_BOLD
+            text = name; textSize = 14f; setTextColor(Color.WHITE); typeface = Typeface.DEFAULT_BOLD
         }
         val tvSeen = TextView(this).apply {
-            text = seenText; textSize = 10f; typeface = Typeface.MONOSPACE
+            text = seenText; textSize = 11f; typeface = Typeface.MONOSPACE
             setTextColor(Color.parseColor("#5A6377"))
         }
         row.addView(dot); row.addView(tvName); row.addView(tvSeen)
