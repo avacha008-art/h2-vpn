@@ -92,6 +92,9 @@
             android:name=".ui.ServerMonitorActivity"
             android:exported="false" />
         <activity
+            android:name=".ui.PanelActivity"
+            android:exported="false" />
+        <activity
             android:name=".ui.AppPickerActivity"
             android:exported="false" />
         <activity

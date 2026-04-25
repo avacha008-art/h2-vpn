@@ -367,7 +367,7 @@
                             android:layout_marginTop="4dp"
                             android:layout_marginBottom="6dp"
                             android:backgroundTint="#1F2738"
-                            android:text="СЕРВЕР"
+                            android:text="ПАНЕЛЬ"
                             android:textColor="#8993A4"
                             android:textSize="13sp"
                             android:textStyle="bold"
