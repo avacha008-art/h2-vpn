@@ -162,7 +162,7 @@ class PanelActivity : BaseActivity() {
         binding.servicesContainer.removeAllViews()
         val services = status.optJSONObject("services")
         if (services != null) {
-            for (key in listOf("x-ui", "h2", "echobot", "nginx", "vpnstats", "speedserver")) {
+            for (key in listOf("x-ui", "h2", "nginx", "echobot", "vpnstats", "speedserver")) {
                 val state = services.optString(key, "unknown")
                 addServiceRow(binding.servicesContainer, serviceNames[key] ?: key, state, key)
             }
@@ -378,7 +378,7 @@ class PanelActivity : BaseActivity() {
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dpToPx(8), 0, dpToPx(8))
+            setPadding(0, dpToPx(10), 0, dpToPx(10))
         }
         val tvIcon = TextView(this).apply {
             this.text = icon; textSize = 14f
