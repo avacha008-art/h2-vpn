@@ -44,7 +44,8 @@ class PanelActivity : BaseActivity() {
         val gesture = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
             override fun onFling(e1: MotionEvent?, e2: MotionEvent, vX: Float, vY: Float): Boolean {
                 val dx = (e2.x) - (e1?.x ?: 0f)
-                if (Math.abs(dx) > 100 && Math.abs(vX) > 200) {
+                val dy = (e2.y) - (e1?.y ?: 0f)
+                if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 80 && Math.abs(vX) > 150) {
                     val cur = binding.flipper.displayedChild
                     if (dx < 0 && cur < 2) switchTab(cur + 1)
                     else if (dx > 0 && cur > 0) switchTab(cur - 1)
@@ -53,7 +54,12 @@ class PanelActivity : BaseActivity() {
                 return false
             }
         })
-        binding.flipper.setOnTouchListener { _, event -> gesture.onTouchEvent(event); true }
+        for (i in 0 until binding.flipper.childCount) {
+            binding.flipper.getChildAt(i).setOnTouchListener { v, event ->
+                gesture.onTouchEvent(event)
+                false
+            }
+        }
 
         loadData()
     }
