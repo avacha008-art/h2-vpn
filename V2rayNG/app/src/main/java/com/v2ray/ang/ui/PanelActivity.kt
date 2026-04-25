@@ -169,12 +169,14 @@ class PanelActivity : BaseActivity() {
         }
 
         val sslDays = status.optInt("ssl_days", -1)
-        binding.tvSslDays.text = if (sslDays >= 0) "${sslDays} \u0434\u043D\u0435\u0439" else "\u2014"
-        binding.tvSslDays.setTextColor(Color.parseColor(if (sslDays in 0..14) "#FF6B6B" else "#00E5A0"))
-
+        val sslColor = if (sslDays in 0..14) "#FF6B6B" else "#00E5A0"
+        val sslDot = if (sslDays in 0..14) R.drawable.dot_red else R.drawable.dot_green
         val sshToday = status.optInt("ssh_today", 0)
-        binding.tvSshToday.text = "$sshToday"
-        binding.tvSshToday.setTextColor(Color.parseColor(if (sshToday > 100) "#FF6B6B" else "#FFB800"))
+        val sshColor = if (sshToday > 10000) "#FF6B6B" else "#FFB800"
+        val sshDot = if (sshToday > 10000) R.drawable.dot_red else R.drawable.dot_green
+        binding.securityContainer.removeAllViews()
+        addInfoRow(binding.securityContainer, "SSL \u0441\u0435\u0440\u0442\u0438\u0444\u0438\u043A\u0430\u0442", if (sslDays >= 0) "${sslDays} \u0434\u043D" else "\u2014", sslColor, sslDot)
+        addInfoRow(binding.securityContainer, "SSH (\u0441\u0435\u0433\u043E\u0434\u043D\u044F)", "$sshToday", sshColor, sshDot)
 
         val sdf = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
         binding.tvUpdated.text = "\u041E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u043E: ${sdf.format(Date())}"
@@ -194,24 +196,10 @@ class PanelActivity : BaseActivity() {
 
         // DuckDNS
         val duckOk = status.optBoolean("duckdns_ok", false)
-        val duckIp = status.optString("duckdns_ip", "?")
-        if (duckOk) {
-            binding.tvDuckdns.text = "\u2705 IP \u0441\u043E\u0432\u043F\u0430\u0434\u0430\u0435\u0442"
-            binding.tvDuckdns.setTextColor(Color.parseColor("#00E5A0"))
-        } else {
-            binding.tvDuckdns.text = "\u274C $duckIp"
-            binding.tvDuckdns.setTextColor(Color.parseColor("#FF6B6B"))
-        }
-
-        // FCM
         val fcmOk = status.optBoolean("fcm_ok", false)
-        if (fcmOk) {
-            binding.tvFcm.text = "\u2705 \u0430\u043A\u0442\u0438\u0432\u0435\u043D"
-            binding.tvFcm.setTextColor(Color.parseColor("#00E5A0"))
-        } else {
-            binding.tvFcm.text = "\u274C \u043D\u0435 \u0440\u0430\u0431\u043E\u0442\u0430\u0435\u0442"
-            binding.tvFcm.setTextColor(Color.parseColor("#FF6B6B"))
-        }
+        binding.infraContainer.removeAllViews()
+        addInfoRow(binding.infraContainer, "DuckDNS", if (duckOk) "OK" else "\u043E\u0448\u0438\u0431\u043A\u0430", if (duckOk) "#00E5A0" else "#FF6B6B", if (duckOk) R.drawable.dot_green else R.drawable.dot_red)
+        addInfoRow(binding.infraContainer, "FCM Push", if (fcmOk) "OK" else "\u043E\u0448\u0438\u0431\u043A\u0430", if (fcmOk) "#00E5A0" else "#FF6B6B", if (fcmOk) R.drawable.dot_green else R.drawable.dot_red)
 
         binding.tvH2Version.text = "v${status.optString("h2_version", "?")}"
 
@@ -278,19 +266,25 @@ class PanelActivity : BaseActivity() {
             text = name; textSize = 14f; setTextColor(Color.WHITE)
         }
         val tvState = TextView(this).apply {
-            text = state; textSize = 12f; typeface = Typeface.MONOSPACE
+            layoutParams = LinearLayout.LayoutParams(dpToPx(60), LinearLayout.LayoutParams.WRAP_CONTENT)
+            text = state; textSize = 12f; typeface = Typeface.MONOSPACE; gravity = Gravity.END
             setTextColor(if (state == "active") Color.parseColor("#00E5A0") else Color.parseColor("#FF6B6B"))
         }
         row.addView(dot); row.addView(tvName); row.addView(tvState)
 
         if (restartableServices.containsKey(svcKey)) {
             val btn = TextView(this).apply {
-                text = "\u21BB"; textSize = 20f
+                layoutParams = LinearLayout.LayoutParams(dpToPx(32), dpToPx(32)).apply { marginStart = dpToPx(10) }
+                text = "\u21BB"; textSize = 15f; gravity = Gravity.CENTER
                 setTextColor(Color.parseColor("#4ECDC4"))
-                setPadding(dpToPx(14), 0, 0, 0)
+                setBackgroundResource(R.drawable.btn_restart_bg)
                 setOnClickListener { confirmRestart(name, restartableServices[svcKey]!!) }
             }
             row.addView(btn)
+        } else {
+            row.addView(View(this).apply {
+                layoutParams = LinearLayout.LayoutParams(dpToPx(32), dpToPx(1)).apply { marginStart = dpToPx(10) }
+            })
         }
 
         container.addView(row)
@@ -375,40 +369,42 @@ class PanelActivity : BaseActivity() {
     }
 
     private fun addLogRow(icon: String, text: String, level: String, ts: Long) {
+        val dotRes = when (level) {
+            "critical" -> R.drawable.dot_red
+            "ok" -> R.drawable.dot_green
+            "warning" -> R.drawable.dot_yellow
+            else -> R.drawable.dot_gray
+        }
+        val textColor = when (level) {
+            "critical" -> "#FF6B6B"
+            "warning" -> "#FFB800"
+            "ok" -> "#00E5A0"
+            else -> "#8993A4"
+        }
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(0, dpToPx(10), 0, dpToPx(10))
         }
-        val tvIcon = TextView(this).apply {
-            this.text = icon; textSize = 14f
-            layoutParams = LinearLayout.LayoutParams(dpToPx(28), LinearLayout.LayoutParams.WRAP_CONTENT)
-        }
-        val contentLayout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        val dot = View(this).apply {
+            layoutParams = LinearLayout.LayoutParams(dpToPx(10), dpToPx(10)).apply { marginEnd = dpToPx(12) }
+            setBackgroundResource(dotRes)
         }
         val tvText = TextView(this).apply {
-            this.text = text; textSize = 12f
-            setTextColor(Color.parseColor(when (level) {
-                "critical" -> "#FF6B6B"
-                "warning" -> "#FFB800"
-                "ok" -> "#00E5A0"
-                else -> "#8993A4"
-            }))
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            this.text = text; textSize = 13f
+            setTextColor(Color.parseColor(textColor))
         }
         val tvTime = TextView(this).apply {
-            this.text = formatEventTime(ts); textSize = 10f; typeface = Typeface.MONOSPACE
+            layoutParams = LinearLayout.LayoutParams(dpToPx(60), LinearLayout.LayoutParams.WRAP_CONTENT)
+            this.text = formatEventTime(ts); textSize = 11f; typeface = Typeface.MONOSPACE; gravity = Gravity.END
             setTextColor(Color.parseColor("#5A6377"))
         }
-        contentLayout.addView(tvText)
-        contentLayout.addView(tvTime)
-        row.addView(tvIcon)
-        row.addView(contentLayout)
+        row.addView(dot); row.addView(tvText); row.addView(tvTime)
         binding.logContainer.addView(row)
         binding.logContainer.addView(View(this).apply {
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1)
-            setBackgroundColor(Color.parseColor("#1A1F2E"))
+            setBackgroundColor(Color.parseColor("#1F2738"))
         })
     }
 
@@ -420,6 +416,33 @@ class PanelActivity : BaseActivity() {
         val sdfDate = SimpleDateFormat("dd.MM HH:mm", Locale.getDefault())
         return if (diff < 86400) "\u0441\u0435\u0433\u043E\u0434\u043D\u044F ${sdf.format(Date(ts * 1000))}"
         else sdfDate.format(Date(ts * 1000))
+    }
+
+    private fun addInfoRow(container: LinearLayout, name: String, value: String, valueColor: String, dotRes: Int) {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dpToPx(10), 0, dpToPx(10))
+        }
+        val dot = View(this).apply {
+            layoutParams = LinearLayout.LayoutParams(dpToPx(10), dpToPx(10)).apply { marginEnd = dpToPx(12) }
+            setBackgroundResource(dotRes)
+        }
+        val tvName = TextView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            text = name; textSize = 14f; setTextColor(Color.WHITE)
+        }
+        val tvVal = TextView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(dpToPx(70), LinearLayout.LayoutParams.WRAP_CONTENT)
+            text = value; textSize = 12f; typeface = Typeface.MONOSPACE; gravity = Gravity.END
+            setTextColor(Color.parseColor(valueColor))
+        }
+        row.addView(dot); row.addView(tvName); row.addView(tvVal)
+        container.addView(row)
+        container.addView(View(this).apply {
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1)
+            setBackgroundColor(Color.parseColor("#1F2738"))
+        })
     }
 
     private fun dpToPx(dp: Int): Int = (dp * resources.displayMetrics.density).toInt()
