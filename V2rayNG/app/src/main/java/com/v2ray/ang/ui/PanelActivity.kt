@@ -68,8 +68,8 @@ class PanelActivity : BaseActivity() {
         val cur = binding.flipper.displayedChild
         if (index == cur) return
         if (index > cur) {
-            binding.flipper.setInAnimation(this, android.R.anim.slide_in_left)
-            binding.flipper.setOutAnimation(this, android.R.anim.slide_out_left)
+            binding.flipper.setInAnimation(this, R.anim.slide_in_left)
+            binding.flipper.setOutAnimation(this, R.anim.slide_out_left)
         } else {
             binding.flipper.setInAnimation(this, R.anim.slide_in_right)
             binding.flipper.setOutAnimation(this, R.anim.slide_out_right)
