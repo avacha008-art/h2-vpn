@@ -65,6 +65,15 @@ class PanelActivity : BaseActivity() {
     }
 
     private fun switchTab(index: Int) {
+        val cur = binding.flipper.displayedChild
+        if (index == cur) return
+        if (index > cur) {
+            binding.flipper.setInAnimation(this, android.R.anim.slide_in_left)
+            binding.flipper.setOutAnimation(this, android.R.anim.slide_out_left)
+        } else {
+            binding.flipper.setInAnimation(this, R.anim.slide_in_right)
+            binding.flipper.setOutAnimation(this, R.anim.slide_out_right)
+        }
         binding.flipper.displayedChild = index
         val tabs = listOf(binding.tabServer, binding.tabH2, binding.tabLog)
         val indicators = listOf(binding.indicatorServer, binding.indicatorH2, binding.indicatorLog)
