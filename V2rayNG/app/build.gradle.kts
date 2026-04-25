@@ -12,8 +12,8 @@ android {
         applicationId = "com.h2.vpn"
         minSdk = 24
         targetSdk = 36
-        versionCode = 35
-        versionName = "3.5"
+        versionCode = 36
+        versionName = "3.6"
         multiDexEnabled = true
 
         val abiFilterList = (properties["ABI_FILTERS"] as? String)?.split(';')

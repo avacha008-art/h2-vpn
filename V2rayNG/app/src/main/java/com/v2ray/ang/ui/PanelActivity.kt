@@ -36,14 +36,18 @@ class PanelActivity : BaseActivity() {
 
         binding.tabServer.setOnClickListener { switchTab(0) }
         binding.tabH2.setOnClickListener { switchTab(1) }
+        binding.tabLog.setOnClickListener { switchTab(2) }
         binding.btnRefresh.setOnClickListener { loadData() }
         binding.btnRefreshH2.setOnClickListener { loadData() }
+        binding.btnRefreshLog.setOnClickListener { loadData() }
 
         val gesture = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
             override fun onFling(e1: MotionEvent?, e2: MotionEvent, vX: Float, vY: Float): Boolean {
                 val dx = (e2.x) - (e1?.x ?: 0f)
                 if (Math.abs(dx) > 100 && Math.abs(vX) > 200) {
-                    if (dx < 0) switchTab(1) else switchTab(0)
+                    val cur = binding.flipper.displayedChild
+                    if (dx < 0 && cur < 2) switchTab(cur + 1)
+                    else if (dx > 0 && cur > 0) switchTab(cur - 1)
                     return true
                 }
                 return false
@@ -56,22 +60,16 @@ class PanelActivity : BaseActivity() {
 
     private fun switchTab(index: Int) {
         binding.flipper.displayedChild = index
-        if (index == 0) {
-            binding.tabServer.setTextColor(Color.parseColor("#4ECDC4"))
-            binding.tabH2.setTextColor(Color.parseColor("#5A6377"))
-            binding.indicatorServer.setBackgroundColor(Color.parseColor("#4ECDC4"))
-            binding.indicatorH2.setBackgroundColor(Color.parseColor("#1F2738"))
-        } else {
-            binding.tabServer.setTextColor(Color.parseColor("#5A6377"))
-            binding.tabH2.setTextColor(Color.parseColor("#4ECDC4"))
-            binding.indicatorServer.setBackgroundColor(Color.parseColor("#1F2738"))
-            binding.indicatorH2.setBackgroundColor(Color.parseColor("#4ECDC4"))
-        }
+        val tabs = listOf(binding.tabServer, binding.tabH2, binding.tabLog)
+        val indicators = listOf(binding.indicatorServer, binding.indicatorH2, binding.indicatorLog)
+        tabs.forEachIndexed { i, tab -> tab.setTextColor(Color.parseColor(if (i == index) "#4ECDC4" else "#5A6377")) }
+        indicators.forEachIndexed { i, ind -> ind.setBackgroundColor(Color.parseColor(if (i == index) "#4ECDC4" else "#1F2738")) }
     }
 
     private fun loadData() {
         binding.btnRefresh.isEnabled = false
         binding.btnRefreshH2.isEnabled = false
+        binding.btnRefreshLog.isEnabled = false
 
         lifecycleScope.launch(Dispatchers.IO) {
             try {
@@ -89,11 +87,23 @@ class PanelActivity : BaseActivity() {
                 conn2.disconnect()
                 val vpn = org.json.JSONObject(vpnBody)
 
+                var logEvents = org.json.JSONArray()
+                try {
+                    val conn3 = java.net.URL("http://45.38.190.244/serverlog.json").openConnection() as java.net.HttpURLConnection
+                    conn3.connectTimeout = 5000
+                    conn3.readTimeout = 5000
+                    val logBody = conn3.inputStream.bufferedReader().readText()
+                    conn3.disconnect()
+                    logEvents = org.json.JSONArray(logBody)
+                } catch (_: Exception) {}
+
                 launch(Dispatchers.Main) {
                     updateServerTab(status, vpn)
                     updateH2Tab(status)
+                    updateLogTab(logEvents)
                     binding.btnRefresh.isEnabled = true
                     binding.btnRefreshH2.isEnabled = true
+                    binding.btnRefreshLog.isEnabled = true
                 }
             } catch (_: Exception) {
                 launch(Dispatchers.Main) {
@@ -105,8 +115,10 @@ class PanelActivity : BaseActivity() {
                     binding.tvH2Status.setTextColor(Color.parseColor("#FF6B6B"))
                     binding.h2Dot.setBackgroundColor(Color.parseColor("#FF6B6B"))
                     binding.tvUpdatedH2.text = "\u041E\u0448\u0438\u0431\u043A\u0430"
+                    binding.tvUpdatedLog.text = "\u041E\u0448\u0438\u0431\u043A\u0430"
                     binding.btnRefresh.isEnabled = true
                     binding.btnRefreshH2.isEnabled = true
+                    binding.btnRefreshLog.isEnabled = true
                 }
             }
         }
@@ -283,6 +295,69 @@ class PanelActivity : BaseActivity() {
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1)
             setBackgroundColor(Color.parseColor("#1F2738"))
         })
+    }
+
+    private fun updateLogTab(events: org.json.JSONArray) {
+        binding.logContainer.removeAllViews()
+        if (events.length() == 0) {
+            binding.tvNoEvents.visibility = View.VISIBLE
+        } else {
+            binding.tvNoEvents.visibility = View.GONE
+            for (i in events.length() - 1 downTo 0) {
+                val e = events.getJSONObject(i)
+                addLogRow(e.optString("icon", ""), e.optString("text", ""), e.optString("level", "info"), e.optLong("ts", 0))
+            }
+        }
+        val sdf = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+        binding.tvUpdatedLog.text = "\u041E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u043E: ${sdf.format(Date())}"
+    }
+
+    private fun addLogRow(icon: String, text: String, level: String, ts: Long) {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dpToPx(8), 0, dpToPx(8))
+        }
+        val tvIcon = TextView(this).apply {
+            this.text = icon; textSize = 14f
+            layoutParams = LinearLayout.LayoutParams(dpToPx(28), LinearLayout.LayoutParams.WRAP_CONTENT)
+        }
+        val contentLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        val tvText = TextView(this).apply {
+            this.text = text; textSize = 12f
+            setTextColor(Color.parseColor(when (level) {
+                "critical" -> "#FF6B6B"
+                "warning" -> "#FFB800"
+                "ok" -> "#00E5A0"
+                else -> "#8993A4"
+            }))
+        }
+        val tvTime = TextView(this).apply {
+            this.text = formatEventTime(ts); textSize = 10f; typeface = Typeface.MONOSPACE
+            setTextColor(Color.parseColor("#5A6377"))
+        }
+        contentLayout.addView(tvText)
+        contentLayout.addView(tvTime)
+        row.addView(tvIcon)
+        row.addView(contentLayout)
+        binding.logContainer.addView(row)
+        binding.logContainer.addView(View(this).apply {
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1)
+            setBackgroundColor(Color.parseColor("#1A1F2E"))
+        })
+    }
+
+    private fun formatEventTime(ts: Long): String {
+        if (ts == 0L) return "\u2014"
+        val now = System.currentTimeMillis() / 1000
+        val diff = now - ts
+        val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
+        val sdfDate = SimpleDateFormat("dd.MM HH:mm", Locale.getDefault())
+        return if (diff < 86400) "\u0441\u0435\u0433\u043E\u0434\u043D\u044F ${sdf.format(Date(ts * 1000))}"
+        else sdfDate.format(Date(ts * 1000))
     }
 
     private fun dpToPx(dp: Int): Int = (dp * resources.displayMetrics.density).toInt()
