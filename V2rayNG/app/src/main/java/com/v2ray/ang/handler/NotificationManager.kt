@@ -64,28 +64,23 @@ object NotificationManager {
                 }
                 val sinceLastQueryInSeconds = sinceLastQueryIn / 1000.0
 
-                var proxyTotal = 0L
+                var totalUp = 0L
+                var totalDown = 0L
                 val text = StringBuilder()
                 outboundTags?.forEach {
-                    val up = V2RayServiceManager.queryStats(it, AppConfig.UPLINK)
-                    val down = V2RayServiceManager.queryStats(it, AppConfig.DOWNLINK)
-                    if (up + down > 0) {
-                        appendSpeedString(text, it, up / sinceLastQueryInSeconds, down / sinceLastQueryInSeconds)
-                        proxyTotal += up + down
-                    }
+                    totalUp += V2RayServiceManager.queryStats(it, AppConfig.UPLINK)
+                    totalDown += V2RayServiceManager.queryStats(it, AppConfig.DOWNLINK)
                 }
                 val directUplink = V2RayServiceManager.queryStats(AppConfig.TAG_DIRECT, AppConfig.UPLINK)
                 val directDownlink = V2RayServiceManager.queryStats(AppConfig.TAG_DIRECT, AppConfig.DOWNLINK)
-                val zeroSpeed = proxyTotal == 0L && directUplink == 0L && directDownlink == 0L
+                totalUp += directUplink
+                totalDown += directDownlink
+                val zeroSpeed = totalUp == 0L && totalDown == 0L
                 if (!zeroSpeed || !lastZeroSpeed) {
-                    if (proxyTotal == 0L) {
-                        appendSpeedString(text, outboundTags?.firstOrNull(), 0.0, 0.0)
-                    }
-                    appendSpeedString(
-                        text, AppConfig.TAG_DIRECT, directUplink / sinceLastQueryInSeconds,
-                        directDownlink / sinceLastQueryInSeconds
-                    )
-                    updateNotification(text.toString(), proxyTotal, directDownlink + directUplink)
+                    val upSpeed = (totalUp / sinceLastQueryInSeconds).toLong().toSpeedString()
+                    val downSpeed = (totalDown / sinceLastQueryInSeconds).toLong().toSpeedString()
+                    text.append("\u2191 $upSpeed    \u2193 $downSpeed")
+                    updateNotification(text.toString(), totalUp, totalDown)
                 }
                 lastZeroSpeed = zeroSpeed
                 lastQueryTime = queryTime

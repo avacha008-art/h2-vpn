@@ -164,7 +164,7 @@ class PanelActivity : BaseActivity() {
         if (services != null) {
             for (key in listOf("x-ui", "h2", "echobot", "nginx", "vpnstats", "speedserver")) {
                 val state = services.optString(key, "unknown")
-                addServiceRow(binding.servicesContainer, serviceNames[key] ?: key, state)
+                addServiceRow(binding.servicesContainer, serviceNames[key] ?: key, state, key)
             }
         }
 
@@ -260,7 +260,10 @@ class PanelActivity : BaseActivity() {
         }
     }
 
-    private fun addServiceRow(container: LinearLayout, name: String, state: String) {
+    private val restartableServices = mapOf("x-ui" to "vpn", "h2" to "h2", "nginx" to "nginx")
+    private val ADMIN_KEY = "H2admin9090secret"
+
+    private fun addServiceRow(container: LinearLayout, name: String, state: String, svcKey: String = "") {
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -279,11 +282,55 @@ class PanelActivity : BaseActivity() {
             setTextColor(if (state == "active") Color.parseColor("#00E5A0") else Color.parseColor("#FF6B6B"))
         }
         row.addView(dot); row.addView(tvName); row.addView(tvState)
+
+        if (restartableServices.containsKey(svcKey)) {
+            val btn = TextView(this).apply {
+                text = "\u21BB"; textSize = 16f
+                setTextColor(Color.parseColor("#5A6377"))
+                setPadding(dpToPx(10), 0, 0, 0)
+                setOnClickListener { confirmRestart(name, restartableServices[svcKey]!!) }
+            }
+            row.addView(btn)
+        }
+
         container.addView(row)
         container.addView(View(this).apply {
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1)
             setBackgroundColor(Color.parseColor("#1F2738"))
         })
+    }
+
+    private fun confirmRestart(name: String, endpoint: String) {
+        android.app.AlertDialog.Builder(this)
+            .setTitle("\u041F\u0435\u0440\u0435\u0437\u0430\u043F\u0443\u0441\u0442\u0438\u0442\u044C $name?")
+            .setMessage("\u0421\u0435\u0440\u0432\u0438\u0441 \u0431\u0443\u0434\u0435\u0442 \u043F\u0435\u0440\u0435\u0437\u0430\u043F\u0443\u0449\u0435\u043D")
+            .setPositiveButton("\u0414\u0430") { _, _ -> restartService(endpoint) }
+            .setNegativeButton("\u041E\u0442\u043C\u0435\u043D\u0430", null)
+            .show()
+    }
+
+    private fun restartService(endpoint: String) {
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val conn = java.net.URL("http://45.38.190.244/admin-api/restart/$endpoint").openConnection() as java.net.HttpURLConnection
+                conn.requestMethod = "POST"
+                conn.setRequestProperty("X-Key", ADMIN_KEY)
+                conn.connectTimeout = 5000
+                conn.readTimeout = 5000
+                val code = conn.responseCode
+                conn.disconnect()
+                launch(Dispatchers.Main) {
+                    android.widget.Toast.makeText(this@PanelActivity,
+                        if (code == 200) "\u2705 \u041F\u0435\u0440\u0435\u0437\u0430\u043F\u0443\u0449\u0435\u043D" else "\u274C \u041E\u0448\u0438\u0431\u043A\u0430: $code",
+                        android.widget.Toast.LENGTH_SHORT).show()
+                    loadData()
+                }
+            } catch (e: Exception) {
+                launch(Dispatchers.Main) {
+                    android.widget.Toast.makeText(this@PanelActivity, "\u274C ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
 
     private fun addUserRow(name: String, online: Boolean, seenText: String) {
