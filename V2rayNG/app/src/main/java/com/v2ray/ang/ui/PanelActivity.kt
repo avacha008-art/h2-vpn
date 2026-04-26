@@ -176,7 +176,57 @@ class PanelActivity : BaseActivity() {
         val sshDot = if (sshToday > 10000) R.drawable.dot_red else R.drawable.dot_green
         binding.securityContainer.removeAllViews()
         addInfoRow(binding.securityContainer, "SSL \u0441\u0435\u0440\u0442\u0438\u0444\u0438\u043A\u0430\u0442", if (sslDays >= 0) "${sslDays} \u0434\u043D" else "\u2014", sslColor, sslDot)
-        addInfoRow(binding.securityContainer, "SSH (\u0441\u0435\u0433\u043E\u0434\u043D\u044F)", "$sshToday", sshColor, sshDot)
+        // SSH row with reset button
+        val sshRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dpToPx(10), 0, dpToPx(10))
+        }
+        sshRow.addView(View(this).apply {
+            layoutParams = LinearLayout.LayoutParams(dpToPx(10), dpToPx(10)).apply { marginEnd = dpToPx(12) }
+            setBackgroundResource(sshDot)
+        })
+        sshRow.addView(TextView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            text = "SSH (\u0441\u0435\u0433\u043E\u0434\u043D\u044F)"; textSize = 14f; setTextColor(Color.WHITE)
+        })
+        sshRow.addView(TextView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(dpToPx(50), LinearLayout.LayoutParams.WRAP_CONTENT)
+            text = "$sshToday"; textSize = 12f; typeface = Typeface.MONOSPACE; gravity = Gravity.END
+            setTextColor(Color.parseColor(sshColor))
+        })
+        val btnReset = android.widget.Button(this).apply {
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, dpToPx(28)).apply { marginStart = dpToPx(8) }
+            text = "\u0421\u0431\u0440\u043E\u0441"; textSize = 10f; setTextColor(Color.parseColor("#FF6B6B"))
+            backgroundTintList = android.content.res.ColorStateList.valueOf(Color.parseColor("#33FF6B6B"))
+            minimumWidth = 0; minWidth = 0; setPadding(dpToPx(10), 0, dpToPx(10), 0)
+            isAllCaps = false
+        }
+        btnReset.setOnClickListener {
+            android.app.AlertDialog.Builder(this)
+                .setTitle("\u0421\u0431\u0440\u043E\u0441 SSH")
+                .setMessage("\u0421\u0431\u0440\u043E\u0441\u0438\u0442\u044C \u0441\u0447\u0451\u0442\u0447\u0438\u043A SSH \u043F\u043E\u043F\u044B\u0442\u043E\u043A?")
+                .setPositiveButton("\u0414\u0430") { _, _ ->
+                    Thread {
+                        try {
+                            val conn = java.net.URL("http://45.38.190.244:8080/reset_ssh").openConnection() as java.net.HttpURLConnection
+                            conn.connectTimeout = 5000; conn.readTimeout = 5000
+                            conn.inputStream.bufferedReader().readText(); conn.disconnect()
+                            runOnUiThread { loadData() }
+                        } catch (e: Exception) {
+                            runOnUiThread { android.widget.Toast.makeText(this, "\u041E\u0448\u0438\u0431\u043A\u0430: ${e.message}", android.widget.Toast.LENGTH_SHORT).show() }
+                        }
+                    }.start()
+                }
+                .setNegativeButton("\u041D\u0435\u0442", null)
+                .show()
+        }
+        sshRow.addView(btnReset)
+        binding.securityContainer.addView(sshRow)
+        binding.securityContainer.addView(View(this).apply {
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1)
+            setBackgroundColor(Color.parseColor("#1F2738"))
+        })
 
         val sdf = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
         binding.tvUpdated.text = "\u041E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u043E: ${sdf.format(Date())}"
