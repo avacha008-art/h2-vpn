@@ -31,6 +31,35 @@ class ServerMonitorActivity : BaseActivity() {
         setContentViewWithToolbar(binding.root, showHomeAsUp = true, title = "\u0421\u0435\u0440\u0432\u0435\u0440 DE")
 
         binding.btnRefresh.setOnClickListener { loadData() }
+        binding.btnResetSsh.setOnClickListener {
+            android.app.AlertDialog.Builder(this)
+                .setTitle("Сброс SSH")
+                .setMessage("Сбросить счётчик SSH попыток?")
+                .setPositiveButton("Да") { _, _ ->
+                    Thread {
+                        try {
+                            val conn = java.net.URL("http://45.38.190.244:8080/reset_ssh").openConnection() as java.net.HttpURLConnection
+                            conn.connectTimeout = 5000
+                            conn.readTimeout = 5000
+                            val resp = conn.inputStream.bufferedReader().readText()
+                            conn.disconnect()
+                            runOnUiThread {
+                                binding.tvSshToday.text = "0"
+                                binding.tvSshToday.setTextColor(Color.parseColor("#00E5A0"))
+                                binding.btnResetSsh.text = "✓"
+                                binding.btnResetSsh.backgroundTintList = android.content.res.ColorStateList.valueOf(Color.parseColor("#3300E5A0"))
+                                binding.btnResetSsh.setTextColor(Color.parseColor("#00E5A0"))
+                            }
+                        } catch (e: Exception) {
+                            runOnUiThread {
+                                android.widget.Toast.makeText(this, "Ошибка: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }.start()
+                }
+                .setNegativeButton("Нет", null)
+                .show()
+        }
         loadData()
     }
 
